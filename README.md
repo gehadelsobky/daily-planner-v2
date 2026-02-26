@@ -78,6 +78,27 @@ npm run dev
 
 App runs on [http://localhost:3000](http://localhost:3000).
 
+## Stable Local Bootstrap (Recommended)
+
+Use one deterministic command:
+
+```bash
+npm run local:up
+```
+
+This command does:
+1. Node version check
+2. PostgreSQL reachability/start check
+3. Prisma generate + migrate + seed
+4. Runtime doctor check
+5. Starts app on [http://127.0.0.1:3010](http://127.0.0.1:3010)
+
+If local DB drift happens and you want a full clean reset:
+
+```bash
+npm run local:reset
+```
+
 For a fully stable local run (recommended if you see blank UI/CSS issues), use:
 
 ```bash
