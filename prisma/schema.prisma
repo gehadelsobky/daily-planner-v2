@@ -1,0 +1,280 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  high
+  medium
+  low
+}
+
+enum HabitFrequency {
+  daily
+  weekdays
+  custom
+}
+
+enum ExerciseIntensity {
+  low
+  medium
+  high
+}
+
+enum WaterUnit {
+  cups
+  ml
+}
+
+enum CarryoverState {
+  pending_review
+  added_to_today
+  rescheduled
+  dismissed
+}
+
+enum NotificationType {
+  carryover_tasks
+  system_alert
+}
+
+enum NotificationStatus {
+  unread
+  read
+  dismissed
+}
+
+model User {
+  id                 String          @id @default(uuid())
+  email              String          @unique
+  passwordHash       String
+  resetTokenHash     String?
+  resetTokenExpiresAt DateTime?
+  name               String
+  timezone           String          @default("UTC")
+  weekStartDay       Int             @default(1)
+  waterDefaultTarget Int?            
+  waterDefaultUnit   WaterUnit       @default(cups)
+  dailyLayout        Json            @default("[]")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  scoreSettings      ScoreSetting[]
+  dailyEntries       DailyEntry[]
+  habits             Habit[]
+  xpEvents           XPEvent[]
+  userBadges         UserBadge[]
+  userChallenges     UserChallenge[]
+  notifications      Notification[]
+
+  @@index([createdAt])
+}
+
+model ScoreSetting {
+  id             String   @id @default(uuid())
+  userId         String
+  effectiveFrom  DateTime
+  tasksWeight    Int
+  growWeight     Int
+  habitsWeight   Int
+  exerciseWeight Int
+  gratefulWeight Int
+  waterWeight    Int
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, effectiveFrom])
+  @@unique([userId, effectiveFrom])
+}
+
+model DailyEntry {
+  id            String   @id @default(uuid())
+  userId        String
+  date          DateTime
+  growText      String?
+  notesText     String?
+  tomorrowItems Json     @default("[]")
+  topWinsItems  Json     @default("[]")
+  quoteItems    Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks          Task[]
+  exerciseLogs   ExerciseLog[]
+  gratitudeItems GratitudeItem[]
+  waterLog       WaterLog?
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model Task {
+  id                String         @id @default(uuid())
+  dailyEntryId      String
+  title             String
+  isCompleted       Boolean        @default(false)
+  priority          Priority       @default(medium)
+  category          String?
+  sortOrder         Int            @default(0)
+  createdAt         DateTime       @default(now())
+  completedAt       DateTime?
+  carryoverState    CarryoverState @default(pending_review)
+  carryoverUpdatedAt DateTime?
+  sourceTaskId      String?
+
+  dailyEntry DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
+  sourceTask Task? @relation("TaskCarryoverLink", fields: [sourceTaskId], references: [id], onDelete: SetNull)
+  derivedTasks Task[] @relation("TaskCarryoverLink")
+
+  @@index([dailyEntryId, sortOrder])
+  @@index([dailyEntryId, isCompleted])
+  @@index([sourceTaskId])
+  @@index([carryoverState, isCompleted])
+}
+
+model Habit {
+  id         String         @id @default(uuid())
+  userId     String
+  name       String
+  frequency  HabitFrequency @default(daily)
+  targetValue Int?
+  targetUnit String?
+  customDays Json?
+  isActive   Boolean        @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs HabitLog[]
+
+  @@index([userId, isActive])
+}
+
+model HabitLog {
+  id      String   @id @default(uuid())
+  habitId String
+  date    DateTime
+  isDone  Boolean  @default(false)
+  valueDone Int?
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([date])
+}
+
+model ExerciseLog {
+  id           String             @id @default(uuid())
+  dailyEntryId String
+  type         String
+  minutes      Int
+  intensity    ExerciseIntensity?
+  createdAt    DateTime           @default(now())
+
+  dailyEntry DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
+
+  @@index([dailyEntryId, createdAt])
+}
+
+model GratitudeItem {
+  id           String   @id @default(uuid())
+  dailyEntryId String
+  text         String
+  createdAt    DateTime @default(now())
+
+  dailyEntry DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
+
+  @@index([dailyEntryId, createdAt])
+}
+
+model WaterLog {
+  id           String   @id @default(uuid())
+  dailyEntryId String   @unique
+  target       Int?
+  consumed     Int      @default(0)
+  unit         WaterUnit @default(cups)
+
+  dailyEntry DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
+}
+
+model XPEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime
+  xp        Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@unique([userId, date, reason])
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String
+
+  userBadges UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(uuid())
+  userId   String
+  badgeId  String
+  earnedOn DateTime
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
+
+model Challenge {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String
+  rules       Json
+  startDate   DateTime
+  endDate     DateTime
+
+  userChallenges UserChallenge[]
+}
+
+model UserChallenge {
+  id          String   @id @default(uuid())
+  userId      String
+  challengeId String
+  joinedOn    DateTime
+  progress    Json
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  payload   Json?
+  status    NotificationStatus @default(unread)
+  dedupeKey String?            @unique
+  createdAt DateTime           @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([userId, createdAt])
+}

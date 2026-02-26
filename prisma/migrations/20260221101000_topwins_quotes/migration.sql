@@ -1,0 +1,3 @@
+ALTER TABLE "DailyEntry"
+  ADD COLUMN "topWinsItems" JSONB NOT NULL DEFAULT '[]',
+  ADD COLUMN "quoteItems" JSONB NOT NULL DEFAULT '[]';

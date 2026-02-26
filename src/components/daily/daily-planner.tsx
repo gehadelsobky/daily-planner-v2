@@ -1,0 +1,935 @@
+"use client";
+
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { apiFetch } from "@/lib/fetcher";
+
+type SectionId =
+  | "top_wins"
+  | "quotes"
+  | "gratitude"
+  | "grow_daily"
+  | "tasks"
+  | "water"
+  | "habits"
+  | "for_tomorrow"
+  | "notes"
+  | "exercise";
+
+const DEFAULT_DAILY_SECTION_ORDER: SectionId[] = [
+  "top_wins",
+  "quotes",
+  "gratitude",
+  "grow_daily",
+  "tasks",
+  "for_tomorrow",
+  "water",
+  "habits",
+  "notes",
+  "exercise"
+];
+
+type DailyResponse = {
+  entry: {
+    id: string;
+    growText: string | null;
+    notesText: string | null;
+    tomorrowItems: string[];
+    topWinsItems: string[];
+    quoteItems: string[];
+    tasks: Array<{ id: string; title: string; isCompleted: boolean }>;
+    gratitudeItems: Array<{ id: string; text: string }>;
+    waterLog: { consumed: number; target: number | null } | null;
+    exerciseLogs: Array<{ id: string; type: string; minutes: number }>;
+  };
+  habits: Array<{ id: string; name: string; targetValue: number | null; targetUnit: string | null }>;
+  habitLogs: Array<{ habitId: string; isDone: boolean; valueDone: number | null }>;
+  carryoverTasks: Array<{
+    id: string;
+    title: string;
+    priority: "high" | "medium" | "low";
+    sourceDate: string;
+  }>;
+  dayStatus: "not_started" | "in_progress" | "completed" | "incomplete";
+  todayDate: string;
+  score: {
+    scorePercent: number;
+    breakdown: Array<{
+      key: string;
+      points: number;
+      maxPoints: number;
+      na: boolean;
+    }>;
+  };
+  waterDefaults: {
+    target: number;
+    unit: "cups" | "ml";
+  };
+};
+
+function AutoSectionCard({
+  title,
+  itemCount,
+  children,
+  dragHandle
+}: {
+  title: string;
+  itemCount: number;
+  children: ReactNode;
+  dragHandle?: ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <Card className="flex h-full flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-semibold">{title}</h2>
+        <div className="flex items-center gap-2 text-xs shrink-0">
+          {dragHandle}
+          <Badge>{itemCount} items</Badge>
+          <Button variant="ghost" onClick={() => setIsOpen((v) => !v)} className="h-8 px-3 py-1">
+            {isOpen ? "Collapse" : "Expand"}
+          </Button>
+        </div>
+      </div>
+      {isOpen ? children : <p className="text-sm text-muted-foreground">Section collapsed</p>}
+    </Card>
+  );
+}
+
+function formatDayStatusLabel(
+  status: "not_started" | "in_progress" | "completed" | "incomplete" | undefined
+) {
+  if (!status) return "not started";
+  return status.replaceAll("_", " ");
+}
+
+export function DailyPlannerClient({
+  initialDate,
+  initialLayout
+}: {
+  initialDate: string;
+  initialLayout?: string[];
+}) {
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [gratefulText, setGratefulText] = useState("");
+  const [growItemText, setGrowItemText] = useState("");
+  const [topWinText, setTopWinText] = useState("");
+  const [quoteText, setQuoteText] = useState("");
+  const [growText, setGrowText] = useState("");
+  const [topWinsItems, setTopWinsItems] = useState<string[]>([]);
+  const [quoteItems, setQuoteItems] = useState<string[]>([]);
+  const [notesText, setNotesText] = useState("");
+  const [tomorrowText, setTomorrowText] = useState("");
+  const [waterConsumed, setWaterConsumed] = useState(0);
+  const [exerciseType, setExerciseType] = useState("");
+  const [exerciseMinutes, setExerciseMinutes] = useState(0);
+  const [carryoverDateDrafts, setCarryoverDateDrafts] = useState<Record<string, string>>({});
+  const [habitValueDrafts, setHabitValueDrafts] = useState<Record<string, number>>({});
+  const [sectionOrder, setSectionOrder] = useState<SectionId[]>(
+    sanitizeSectionOrder(initialLayout ?? [])
+  );
+  const qc = useQueryClient();
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const queryKey = useMemo(() => ["daily", selectedDate], [selectedDate]);
+
+  const daily = useQuery({
+    queryKey,
+    queryFn: () => apiFetch<DailyResponse>(`/api/daily-entry?date=${selectedDate}`)
+  });
+  const profile = useQuery({
+    queryKey: ["profile"],
+    queryFn: () =>
+      apiFetch<{ profile: { dailyLayout?: string[] } }>("/api/profile")
+  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey });
+  const saveLayout = useMutation({
+    mutationFn: async () =>
+      apiFetch("/api/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ daily_layout: sectionOrder })
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+    }
+  });
+
+  const addTask = useMutation({
+    mutationFn: async () => {
+      if (!taskTitle.trim()) return;
+      await apiFetch("/api/tasks/create", {
+        method: "POST",
+        body: JSON.stringify({ date: selectedDate, title: taskTitle })
+      });
+      setTaskTitle("");
+    },
+    onSuccess: refresh
+  });
+
+  const toggleTask = useMutation({
+    mutationFn: (payload: { task_id: string; is_completed: boolean }) =>
+      apiFetch("/api/tasks/update", {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      }),
+    onSuccess: refresh
+  });
+
+  const addGratitude = useMutation({
+    mutationFn: async () => {
+      if (!gratefulText.trim()) return;
+      await apiFetch("/api/gratitude/add", {
+        method: "POST",
+        body: JSON.stringify({ date: selectedDate, text: gratefulText })
+      });
+      setGratefulText("");
+    },
+    onSuccess: refresh
+  });
+
+  const saveEntry = useMutation({
+    mutationFn: async () => {
+      await apiFetch("/api/daily-entry/upsert", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          grow_text: growText,
+          notes_text: notesText,
+          tomorrow_items: tomorrowText
+            .split("\n")
+            .map((x) => x.trim())
+            .filter(Boolean),
+          top_wins_items: topWinsItems,
+          quote_items: quoteItems
+        })
+      });
+    },
+    onSuccess: refresh
+  });
+
+  const addGrowItem = useMutation({
+    mutationFn: async () => {
+      const item = growItemText.trim();
+      if (!item) return;
+      const existing = growText
+        .split("\n")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      const updatedGrow = [...existing, item].join("\n");
+      await apiFetch("/api/daily-entry/upsert", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          grow_text: updatedGrow,
+          notes_text: notesText,
+          tomorrow_items: tomorrowText
+            .split("\n")
+            .map((x) => x.trim())
+            .filter(Boolean),
+          top_wins_items: topWinsItems,
+          quote_items: quoteItems
+        })
+      });
+      setGrowItemText("");
+      setGrowText(updatedGrow);
+    },
+    onSuccess: refresh
+  });
+
+  const addTopWin = useMutation({
+    mutationFn: async () => {
+      const item = topWinText.trim();
+      if (!item || topWinsItems.length >= 3) return;
+      const updatedTopWins = [...topWinsItems, item];
+      await apiFetch("/api/daily-entry/upsert", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          grow_text: growText,
+          notes_text: notesText,
+          tomorrow_items: tomorrowText
+            .split("\n")
+            .map((x) => x.trim())
+            .filter(Boolean),
+          top_wins_items: updatedTopWins,
+          quote_items: quoteItems
+        })
+      });
+      setTopWinText("");
+      setTopWinsItems(updatedTopWins);
+    },
+    onSuccess: refresh
+  });
+
+  const addQuote = useMutation({
+    mutationFn: async () => {
+      const item = quoteText.trim();
+      if (!item) return;
+      const normalized = `"${item.replace(/^"+|"+$/g, "")}"`;
+      const updatedQuotes = [...quoteItems, normalized];
+      await apiFetch("/api/daily-entry/upsert", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          grow_text: growText,
+          notes_text: notesText,
+          tomorrow_items: tomorrowText
+            .split("\n")
+            .map((x) => x.trim())
+            .filter(Boolean),
+          top_wins_items: topWinsItems,
+          quote_items: updatedQuotes
+        })
+      });
+      setQuoteText("");
+      setQuoteItems(updatedQuotes);
+    },
+    onSuccess: refresh
+  });
+
+  const saveWater = useMutation({
+    mutationFn: async () => {
+      await apiFetch("/api/water/update", {
+        method: "POST",
+        body: JSON.stringify({ date: selectedDate, consumed: waterConsumed })
+      });
+    },
+    onSuccess: refresh
+  });
+
+  const toggleHabit = useMutation({
+    mutationFn: (payload: { habit_id: string; is_done?: boolean; value_done?: number }) =>
+      apiFetch("/api/habit-logs/toggle", {
+        method: "POST",
+        body: JSON.stringify({ ...payload, date: selectedDate })
+      }),
+    onSuccess: refresh
+  });
+
+  const addExercise = useMutation({
+    mutationFn: async () => {
+      if (!exerciseType.trim()) return;
+      await apiFetch("/api/exercise/log", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          type: exerciseType,
+          minutes: exerciseMinutes,
+          intensity: "medium"
+        })
+      });
+      setExerciseType("");
+      setExerciseMinutes(0);
+    },
+    onSuccess: refresh
+  });
+  const carryoverAction = useMutation({
+    mutationFn: (payload: { action: "add_today" | "reschedule" | "dismiss"; task_ids: string[]; target_date?: string }) =>
+      apiFetch("/api/tasks/carryover", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }),
+    onSuccess: refresh
+  });
+
+  const score = daily.data?.score.scorePercent ?? 0;
+  const selectedDateLabel = useMemo(() => {
+    const [year, month, day] = selectedDate.split("-");
+    if (!year || !month || !day) return selectedDate;
+    const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+    if (Number.isNaN(parsed.getTime())) return `${day}-${month}-${year}`;
+    const weekday = parsed.toLocaleDateString("en-US", { weekday: "short" });
+    return `${weekday} ${day}-${month}-${year}`;
+  }, [selectedDate]);
+  const effectiveWaterTarget = daily.data?.waterDefaults?.target ?? daily.data?.entry.waterLog?.target ?? 8;
+  const effectiveWaterUnit = daily.data?.waterDefaults?.unit ?? "cups";
+  const sectionPresentation = (item: { points: number; maxPoints: number; na: boolean }) => {
+    if (item.na || item.maxPoints <= 0) return "NA";
+    const ratio = Math.max(0, Math.min(1, item.points / item.maxPoints));
+    return `${Math.round(ratio * 100)}%`;
+  };
+  const sectionState = (item: { points: number; maxPoints: number; na: boolean }) => {
+    if (item.na || item.maxPoints <= 0) return "na";
+    if (item.points / item.maxPoints >= 0.999) return "completed";
+    return "pending";
+  };
+
+  useEffect(() => {
+    if (!daily.data?.entry) return;
+    setGrowText(daily.data.entry.growText ?? "");
+    setTopWinsItems(asStringArray(daily.data.entry.topWinsItems));
+    setQuoteItems(asStringArray(daily.data.entry.quoteItems));
+    setNotesText(daily.data.entry.notesText ?? "");
+    setTomorrowText((daily.data.entry.tomorrowItems ?? []).join("\n"));
+    setWaterConsumed(daily.data.entry.waterLog?.consumed ?? 0);
+    if (daily.data.habits?.length) {
+      const drafts: Record<string, number> = {};
+      for (const habit of daily.data.habits) {
+        const log = daily.data.habitLogs?.find((h) => h.habitId === habit.id);
+        drafts[habit.id] = log?.valueDone ?? 0;
+      }
+      setHabitValueDrafts(drafts);
+    }
+  }, [daily.data?.entry, daily.data?.habits, daily.data?.habitLogs]);
+
+  useEffect(() => {
+    if (!daily.data?.carryoverTasks?.length) {
+      setCarryoverDateDrafts({});
+      return;
+    }
+    const defaultDate = daily.data.todayDate ?? selectedDate;
+    setCarryoverDateDrafts((prev) => {
+      const next = { ...prev };
+      for (const task of daily.data.carryoverTasks) {
+        if (!next[task.id]) next[task.id] = defaultDate;
+      }
+      return next;
+    });
+  }, [daily.data?.carryoverTasks, daily.data?.todayDate, selectedDate]);
+
+  useEffect(() => {
+    const nextOrder = sanitizeSectionOrder(profile.data?.profile?.dailyLayout ?? []);
+    if (nextOrder.join("|") !== sectionOrder.join("|")) {
+      setSectionOrder(nextOrder);
+    }
+  }, [profile.data?.profile?.dailyLayout]);
+
+  const renderSection = (id: SectionId, dragHandle?: ReactNode) => {
+    const sectionProps = {
+      dragHandle
+    };
+
+    switch (id) {
+      case "top_wins":
+        return (
+          <AutoSectionCard title="Top 3 Wins Of The Day" itemCount={topWinsItems.length} {...sectionProps}>
+            <div className="flex gap-2">
+              <Input
+                value={topWinText}
+                onChange={(e) => setTopWinText(e.target.value)}
+                placeholder="Add a win"
+                disabled={topWinsItems.length >= 3}
+              />
+              <Button onClick={() => addTopWin.mutate()} disabled={topWinsItems.length >= 3}>
+                Add
+              </Button>
+            </div>
+            <ul className="space-y-1 text-sm">
+              {topWinsItems.map((item, idx) => (
+                <li key={`${item}-${idx}`}>• {item}</li>
+              ))}
+            </ul>
+            {topWinsItems.length >= 3 ? (
+              <p className="text-xs text-muted-foreground">Maximum 3 wins per day.</p>
+            ) : null}
+          </AutoSectionCard>
+        );
+      case "quotes":
+        return (
+          <AutoSectionCard title="Quotes" itemCount={quoteItems.length} {...sectionProps}>
+            <div className="flex gap-2">
+              <Input
+                value={quoteText}
+                onChange={(e) => setQuoteText(e.target.value)}
+                placeholder='Add quote text (saved as "quote")'
+              />
+              <Button onClick={() => addQuote.mutate()}>Add</Button>
+            </div>
+            <ul className="space-y-1 text-sm">
+              {quoteItems.map((item, idx) => (
+                <li key={`${item}-${idx}`}>• {item}</li>
+              ))}
+            </ul>
+          </AutoSectionCard>
+        );
+      case "gratitude":
+        return (
+          <AutoSectionCard title="Gratitude" itemCount={daily.data?.entry.gratitudeItems.length ?? 0} {...sectionProps}>
+            <div className="flex gap-2">
+              <Input value={gratefulText} onChange={(e) => setGratefulText(e.target.value)} placeholder="I am grateful for..." />
+              <Button onClick={() => addGratitude.mutate()}>Add</Button>
+            </div>
+            <ul className="space-y-1 text-sm">
+              {daily.data?.entry.gratitudeItems.map((g) => (
+                <li key={g.id}>• {g.text}</li>
+              ))}
+            </ul>
+          </AutoSectionCard>
+        );
+      case "grow_daily":
+        return (
+          <AutoSectionCard
+            title="Grow Daily"
+            itemCount={growText.split("\n").map((x) => x.trim()).filter(Boolean).length}
+            {...sectionProps}
+          >
+            <div className="flex gap-2">
+              <Input
+                value={growItemText}
+                onChange={(e) => setGrowItemText(e.target.value)}
+                placeholder="What did you learn today?"
+              />
+              <Button onClick={() => addGrowItem.mutate()}>Add</Button>
+            </div>
+            <ul className="space-y-1 text-sm">
+              {growText
+                .split("\n")
+                .map((x) => x.trim())
+                .filter(Boolean)
+                .map((item, idx) => (
+                  <li key={`${item}-${idx}`}>• {item}</li>
+                ))}
+            </ul>
+          </AutoSectionCard>
+        );
+      case "tasks":
+        return (
+          <AutoSectionCard title="Tasks" itemCount={daily.data?.entry.tasks.length ?? 0} {...sectionProps}>
+            <div className="flex gap-2">
+              <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Add task" />
+              <Button onClick={() => addTask.mutate()}>Add</Button>
+            </div>
+            <ul className="space-y-1 text-sm">
+              {daily.data?.entry.tasks.map((task) => (
+                <li key={task.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={task.isCompleted}
+                    onChange={(e) =>
+                      toggleTask.mutate({ task_id: task.id, is_completed: e.target.checked })
+                    }
+                  />
+                  <span className={task.isCompleted ? "line-through text-muted-foreground" : ""}>{task.title}</span>
+                </li>
+              ))}
+            </ul>
+          </AutoSectionCard>
+        );
+      case "water":
+        return (
+          <AutoSectionCard title="Water Intake" itemCount={1} {...sectionProps}>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                value={waterConsumed}
+                onChange={(e) => setWaterConsumed(Number(e.target.value))}
+                placeholder={`Consumed (${effectiveWaterUnit})`}
+              />
+              <Button onClick={() => saveWater.mutate()}>Save</Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Current: {daily.data?.entry.waterLog?.consumed ?? 0}/{effectiveWaterTarget}{" "}
+              {effectiveWaterUnit}
+            </p>
+          </AutoSectionCard>
+        );
+      case "habits":
+        return (
+          <AutoSectionCard title="Habits" itemCount={daily.data?.habits.length ?? 0} {...sectionProps}>
+            {daily.data?.habits.length ? (
+              <ul className="space-y-1 text-sm">
+                {daily.data.habits.map((habit) => {
+                  const log = daily.data?.habitLogs.find((h) => h.habitId === habit.id);
+                  const isMeasurable = Boolean(habit.targetValue && habit.targetValue > 0);
+                  return (
+                    <li key={habit.id} className="rounded-md border border-border p-2">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span>{habit.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {isMeasurable
+                            ? `${log?.valueDone ?? 0}/${habit.targetValue} ${habit.targetUnit ?? ""}`
+                            : log?.isDone
+                              ? "done"
+                              : "pending"}
+                        </span>
+                      </div>
+                      {isMeasurable ? (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={habitValueDrafts[habit.id] ?? 0}
+                            onChange={(e) =>
+                              setHabitValueDrafts((prev) => ({
+                                ...prev,
+                                [habit.id]: Number(e.target.value)
+                              }))
+                            }
+                            placeholder={`Target ${habit.targetValue}`}
+                          />
+                          <Button
+                            onClick={() =>
+                              toggleHabit.mutate({
+                                habit_id: habit.id,
+                                value_done: habitValueDrafts[habit.id] ?? 0
+                              })
+                            }
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={Boolean(log?.isDone)}
+                          onChange={(e) =>
+                            toggleHabit.mutate({
+                              habit_id: habit.id,
+                              is_done: e.target.checked
+                            })
+                          }
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No habits configured. Component is NA.</p>
+            )}
+          </AutoSectionCard>
+        );
+      case "for_tomorrow":
+        return (
+          <AutoSectionCard
+            title="For Tomorrow Tasks"
+            itemCount={tomorrowText.split("\n").map((x) => x.trim()).filter(Boolean).length}
+            {...sectionProps}
+          >
+            <Textarea
+              rows={4}
+              value={tomorrowText}
+              onChange={(e) => setTomorrowText(e.target.value)}
+              placeholder="One item per line"
+            />
+            <Button onClick={() => saveEntry.mutate()} className="w-fit">
+              Save For Tomorrow
+            </Button>
+            {daily.data?.entry.tomorrowItems?.length ? (
+              <p className="text-xs text-muted-foreground">
+                Pending auto-move items: {daily.data.entry.tomorrowItems.length}
+              </p>
+            ) : null}
+          </AutoSectionCard>
+        );
+      case "notes":
+        return (
+          <AutoSectionCard
+            title="Notes"
+            itemCount={notesText.trim() ? 1 : 0}
+            {...sectionProps}
+          >
+            <Textarea
+              rows={4}
+              value={notesText}
+              onChange={(e) => setNotesText(e.target.value)}
+              placeholder="Notes"
+            />
+            <Button onClick={() => saveEntry.mutate()} className="w-fit">
+              Save Notes
+            </Button>
+          </AutoSectionCard>
+        );
+      case "exercise":
+        return (
+          <AutoSectionCard title="Exercise" itemCount={daily.data?.entry.exerciseLogs.length ?? 0} {...sectionProps}>
+            <div className="flex gap-2">
+              <Input
+                value={exerciseType}
+                onChange={(e) => setExerciseType(e.target.value)}
+                placeholder="Type"
+              />
+              <Input
+                type="number"
+                value={exerciseMinutes}
+                onChange={(e) => setExerciseMinutes(Number(e.target.value))}
+                placeholder="Minutes"
+              />
+              <Button onClick={() => addExercise.mutate()}>Log</Button>
+            </div>
+            <ul className="text-sm">
+              {daily.data?.entry.exerciseLogs.map((e) => (
+                <li key={e.id}>
+                  {e.type} - {e.minutes} min
+                </li>
+              ))}
+            </ul>
+          </AutoSectionCard>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const onDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setSectionOrder((current) => {
+      const oldIndex = current.indexOf(active.id as SectionId);
+      const newIndex = current.indexOf(over.id as SectionId);
+      if (oldIndex < 0 || newIndex < 0) return current;
+      return arrayMove(current, oldIndex, newIndex);
+    });
+  };
+
+  return (
+    <main className="mx-auto max-w-7xl space-y-4 px-4 py-6">
+      {daily.data?.carryoverTasks?.length ? (
+        <Card className="space-y-3 border-[hsl(var(--ring))]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-semibold">Unfinished Tasks Inbox</h2>
+            <Button
+              onClick={() =>
+                carryoverAction.mutate({
+                  action: "add_today",
+                  task_ids: daily.data.carryoverTasks.map((task) => task.id)
+                })
+              }
+              disabled={carryoverAction.isPending}
+            >
+              Add All To Today
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            You have {daily.data.carryoverTasks.length} incomplete tasks from previous days.
+          </p>
+          <ul className="space-y-2">
+            {daily.data.carryoverTasks.map((task) => (
+              <li key={task.id} className="rounded-md border border-border p-3">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm">
+                    <span className="font-medium">{task.title}</span>{" "}
+                    <span className="text-muted-foreground">
+                      ({task.priority}, from {task.sourceDate})
+                    </span>
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        carryoverAction.mutate({
+                          action: "add_today",
+                          task_ids: [task.id]
+                        })
+                      }
+                      disabled={carryoverAction.isPending}
+                    >
+                      Add To Today
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        carryoverAction.mutate({
+                          action: "dismiss",
+                          task_ids: [task.id]
+                        })
+                      }
+                      disabled={carryoverAction.isPending}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    type="date"
+                    className="w-[170px]"
+                    value={carryoverDateDrafts[task.id] ?? (daily.data?.todayDate ?? selectedDate)}
+                    onChange={(e) =>
+                      setCarryoverDateDrafts((prev) => ({
+                        ...prev,
+                        [task.id]: e.target.value
+                      }))
+                    }
+                  />
+                  <Button
+                    onClick={() =>
+                      carryoverAction.mutate({
+                        action: "reschedule",
+                        task_ids: [task.id],
+                        target_date: carryoverDateDrafts[task.id] ?? (daily.data?.todayDate ?? selectedDate)
+                      })
+                    }
+                    disabled={carryoverAction.isPending}
+                  >
+                    Reschedule
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
+      <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-muted-foreground">{selectedDateLabel}</p>
+          <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, -1))}>Prev</Button>
+          <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-[170px]" />
+          <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, 1))}>Next</Button>
+          </div>
+        </div>
+        <div className="min-w-[240px] space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Daily Score</span>
+            <Button type="button" className="h-8 px-3 py-1 text-sm" disabled>
+              {score}%
+            </Button>
+          </div>
+          <Progress value={score} />
+          <div className="flex flex-wrap gap-1 text-xs">
+            {daily.data?.score.breakdown.map((item) => (
+              <Button
+                key={item.key}
+                type="button"
+                variant="secondary"
+                disabled
+                className={`h-8 rounded-full px-3 py-1 text-xs ${
+                  sectionState(item) === "completed"
+                    ? "bg-[#1fd9b5] text-[#0a0087] disabled:opacity-100"
+                    : sectionState(item) === "pending"
+                      ? "bg-[#5073D3] text-white disabled:opacity-100"
+                      : "bg-[#9E9E9E] text-white disabled:opacity-100"
+                }`}
+              >
+                {item.key}: {sectionPresentation(item)}
+              </Button>
+            ))}
+            <Badge>Day status: {formatDayStatusLabel(daily.data?.dayStatus)}</Badge>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Drag and drop sections to arrange your page, then save.
+        </p>
+        <Button onClick={() => saveLayout.mutate()} disabled={saveLayout.isPending}>
+          Save Layout
+        </Button>
+      </Card>
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={sectionOrder} strategy={rectSortingStrategy}>
+          <section className="grid auto-rows-fr gap-4 lg:grid-cols-3">
+            {sectionOrder.map((id) => (
+              <SortableSection key={id} id={id}>
+                {(dragHandle) => renderSection(id, dragHandle)}
+              </SortableSection>
+            ))}
+          </section>
+        </SortableContext>
+      </DndContext>
+    </main>
+  );
+}
+
+function SortableSection({
+  id,
+  children
+}: {
+  id: SectionId;
+  children: (dragHandle: ReactNode) => ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  };
+
+  const dragHandle = (
+    <button
+      type="button"
+      {...attributes}
+      {...listeners}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted/50 active:cursor-grabbing"
+      title="Drag to reorder section"
+      aria-label="Drag to reorder section"
+    >
+      <GripVertical className="h-4 w-4" />
+      <span className="sr-only">Drag section</span>
+    </button>
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-xl transition-all duration-200 ${
+        isDragging
+          ? "z-10 scale-[0.99] opacity-75 shadow-md ring-2 ring-[hsl(var(--ring))]"
+          : isOver
+            ? "ring-2 ring-[hsl(var(--ring))] bg-muted/20"
+            : ""
+      }`}
+    >
+      {children(dragHandle)}
+    </div>
+  );
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function sanitizeSectionOrder(layout: string[]): SectionId[] {
+  const valid = new Set(DEFAULT_DAILY_SECTION_ORDER);
+  const seen = new Set<SectionId>();
+  const preferred: SectionId[] = [];
+  for (const item of layout) {
+    if (item === "journal") {
+      if (!seen.has("for_tomorrow")) {
+        seen.add("for_tomorrow");
+        preferred.push("for_tomorrow");
+      }
+      if (!seen.has("notes")) {
+        seen.add("notes");
+        preferred.push("notes");
+      }
+      continue;
+    }
+    const sectionId = item as SectionId;
+    if (!valid.has(sectionId) || seen.has(sectionId)) continue;
+    seen.add(sectionId);
+    preferred.push(sectionId);
+  }
+  const missing = DEFAULT_DAILY_SECTION_ORDER.filter((item) => !preferred.includes(item));
+  return [...preferred, ...missing];
+}
+
+function shiftDate(date: string, byDays: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + byDays);
+  return d.toISOString().slice(0, 10);
+}

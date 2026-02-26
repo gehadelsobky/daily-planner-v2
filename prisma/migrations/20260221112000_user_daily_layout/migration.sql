@@ -1,0 +1,2 @@
+ALTER TABLE "User"
+  ADD COLUMN "dailyLayout" JSONB NOT NULL DEFAULT '[]';
