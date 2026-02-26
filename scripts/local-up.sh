@@ -26,7 +26,7 @@ fi
 
 echo "[3/6] Prisma generate/migrate/seed"
 npm run prisma:generate
-npm run prisma:migrate
+npm run prisma:deploy
 npm run prisma:seed
 
 echo "[4/6] Runtime doctor"
@@ -35,5 +35,9 @@ npm run doctor
 echo "[5/6] Stop stale Next.js processes"
 pkill -f "next dev|next start|next-server" >/dev/null 2>&1 || true
 
-echo "[6/6] Start app on http://127.0.0.1:3010"
-exec npm run dev:3010
+APP_HOST="${APP_HOST:-127.0.0.1}"
+APP_PORT="${APP_PORT:-3000}"
+
+echo "[6/6] Start app on http://${APP_HOST}:${APP_PORT}"
+npm run check:node
+exec npm exec next -- dev -H "${APP_HOST}" -p "${APP_PORT}"

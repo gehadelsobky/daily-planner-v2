@@ -89,9 +89,10 @@ npm run local:up
 This command does:
 1. Node version check
 2. PostgreSQL reachability/start check
-3. Prisma generate + migrate + seed
+3. Prisma generate + migrate deploy + seed
 4. Runtime doctor check
-5. Starts app on [http://127.0.0.1:3010](http://127.0.0.1:3010)
+5. Starts app on [http://127.0.0.1:3000](http://127.0.0.1:3000) by default  
+   (override with `APP_PORT=3010 npm run local:up` if needed)
 
 If local DB drift happens and you want a full clean reset:
 
