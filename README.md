@@ -64,6 +64,12 @@ npm run prisma:migrate
 npm run prisma:seed
 ```
 
+Health check:
+
+```bash
+npm run doctor
+```
+
 5. Start app:
 
 ```bash
@@ -79,6 +85,14 @@ npm run start
 ```
 
 Important: run only one Next process at a time (either `dev` or `start`, not both).
+
+If migrations report drift in local development, run:
+
+```bash
+npx prisma migrate reset --force
+```
+
+This resets local development data and re-seeds demo data.
 
 ## Demo seed account
 
