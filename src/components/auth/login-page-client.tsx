@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export default function LoginPageClient() {
+export default function LoginPageClient({ forgotEnabled }: { forgotEnabled: boolean }) {
   const searchParams = useSearchParams();
   const queryError = searchParams.get("error");
   const fallbackError =
@@ -40,9 +40,13 @@ export default function LoginPageClient() {
           </Button>
         </form>
         <div className="flex items-center justify-between gap-3 text-sm">
-          <Link href="/forgot-password" className="underline">
-            Forgot password?
-          </Link>
+          {forgotEnabled ? (
+            <Link href="/forgot-password" className="underline">
+              Forgot password?
+            </Link>
+          ) : (
+            <span />
+          )}
           <Link href="/register" className="underline">
             Create an account
           </Link>

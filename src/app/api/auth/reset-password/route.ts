@@ -5,8 +5,13 @@ import { prisma } from "@/lib/db";
 import { parseJson } from "@/lib/http";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { resetPasswordSchema } from "@/lib/validation/schemas";
+import { isForgotPasswordEnabled } from "@/lib/features";
 
 export async function POST(req: Request) {
+  if (!isForgotPasswordEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const ip = req.headers.get("x-forwarded-for") ?? "local";
   if (!checkRateLimit(`auth-reset:${ip}`, 10, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });

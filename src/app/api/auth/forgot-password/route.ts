@@ -4,8 +4,13 @@ import { parseJson } from "@/lib/http";
 import { forgotPasswordSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
 import { createHash, randomBytes } from "crypto";
+import { isForgotPasswordEnabled } from "@/lib/features";
 
 export async function POST(req: Request) {
+  if (!isForgotPasswordEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const ip = req.headers.get("x-forwarded-for") ?? "local";
   if (!checkRateLimit(`auth-forgot:${ip}`, 5, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });

@@ -126,6 +126,14 @@ This resets local development data and re-seeds demo data.
 - `AUTH_SECRET`: JWT signing secret
 - `CRON_SECRET`: secret header value for cron endpoint
 - `NODE_ENV`: `development`/`production`
+- `ENABLE_FORGOT_PASSWORD`: `false` by default in v2 (set `true` to enable forgot/reset password routes)
+
+## Health endpoint
+
+- `GET /api/health` returns:
+  - app runtime status
+  - DB connectivity status (`up`/`down`)
+  - node/env metadata for debugging
 
 ## API Contract (minimum implemented)
 
