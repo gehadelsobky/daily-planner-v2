@@ -38,6 +38,9 @@ pkill -f "next dev|next start|next-server" >/dev/null 2>&1 || true
 APP_HOST="${APP_HOST:-127.0.0.1}"
 APP_PORT="${APP_PORT:-3000}"
 
-echo "[6/6] Start app on http://${APP_HOST}:${APP_PORT}"
+echo "[6/7] Build production bundle"
 npm run check:node
-exec npm exec next -- dev -H "${APP_HOST}" -p "${APP_PORT}"
+npm run build
+
+echo "[7/7] Start app on http://${APP_HOST}:${APP_PORT}"
+exec npm exec next -- start -H "${APP_HOST}" -p "${APP_PORT}"

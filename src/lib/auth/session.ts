@@ -5,6 +5,22 @@ import { prisma } from "@/lib/db";
 const SESSION_COOKIE = "dp_session";
 const encoder = new TextEncoder();
 
+function shouldUseSecureCookie() {
+  if (process.env.COOKIE_SECURE === "true") {
+    return true;
+  }
+  if (process.env.COOKIE_SECURE === "false") {
+    return false;
+  }
+
+  const explicitUrl = process.env.APP_URL || process.env.AUTH_URL || process.env.NEXTAUTH_URL;
+  if (explicitUrl?.startsWith("https://")) {
+    return true;
+  }
+
+  return process.env.VERCEL === "1";
+}
+
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
@@ -39,7 +55,7 @@ export async function setSessionCookie(token: string) {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7

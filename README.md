@@ -91,7 +91,8 @@ This command does:
 2. PostgreSQL reachability/start check
 3. Prisma generate + migrate deploy + seed
 4. Runtime doctor check
-5. Starts app on [http://127.0.0.1:3000](http://127.0.0.1:3000) by default  
+5. Production build (`next build`)
+6. Starts app on [http://127.0.0.1:3000](http://127.0.0.1:3000) by default  
    (override with `APP_PORT=3010 npm run local:up` if needed)
 
 If local DB drift happens and you want a full clean reset:
@@ -128,6 +129,7 @@ This resets local development data and re-seeds demo data.
 - `CRON_SECRET`: secret header value for cron endpoint
 - `NODE_ENV`: `development`/`production`
 - `ENABLE_FORGOT_PASSWORD`: `false` by default in v2 (set `true` to enable forgot/reset password routes)
+- `COOKIE_SECURE`: set `false` for local HTTP; set `true` for HTTPS deployments
 
 ## Health endpoint
 
