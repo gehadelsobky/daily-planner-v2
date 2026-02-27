@@ -15,6 +15,13 @@ const DEMO_PASSWORD = "DemoPass123!";
 const DEMO_SEED_KEY = "daily-planner-demo-2026-janfeb";
 const RANGE_START = new Date("2026-01-01T00:00:00.000Z");
 const RANGE_END = new Date("2026-02-28T00:00:00.000Z");
+const COVERAGE = {
+  grow: 0.7,
+  notes: 0.55,
+  quote: 0.45,
+  gratitude: 0.8,
+  water: 0.75
+};
 
 function mulberry32(seed: number) {
   return function random() {
@@ -200,12 +207,12 @@ async function main() {
     const weekday = date.getUTCDay();
     const isWeekend = weekday === 0 || weekday === 6;
 
-    const gratitudeCount = randomInt(random, 0, 3);
+    const gratitudeCount = random() < COVERAGE.gratitude ? randomInt(random, 1, 3) : 0;
     const gratitudeItems = Array.from({ length: gratitudeCount }, () => choose(random, gratitudePool));
 
     const topWinsCount = randomInt(random, 1, 3);
     const topWinsItems = Array.from({ length: topWinsCount }, (_, idx) => `Win ${idx + 1}: ${choose(random, taskTitles)}`);
-    const quoteItems = [choose(random, quotesPool)];
+    const quoteItems = random() < COVERAGE.quote ? [choose(random, quotesPool)] : [];
 
     const tomorrowItems = random() > 0.45
       ? [
@@ -215,16 +222,21 @@ async function main() {
       : [];
 
     const growText =
-      random() > 0.25
+      random() < COVERAGE.grow
         ? `Today I improved by ${randomInt(random, 1, 3)}% through focused work, reflection, and better planning.`
         : "";
+
+    const notesText =
+      random() < COVERAGE.notes
+        ? `Day review: ${choose(random, ["steady progress", "high focus", "some context switching", "strong execution"])}`
+        : null;
 
     const entry = await prisma.dailyEntry.create({
       data: {
         userId: user.id,
         date,
         growText,
-        notesText: `Day review: ${choose(random, ["steady progress", "high focus", "some context switching", "strong execution"])}`,
+        notesText,
         tomorrowItems,
         topWinsItems,
         quoteItems
@@ -274,15 +286,17 @@ async function main() {
       });
     }
 
-    const consumed = Math.max(0, Math.min(12, randomInt(random, 4, 11) + (isWeekend ? -1 : 0)));
-    await prisma.waterLog.create({
-      data: {
-        dailyEntryId: entry.id,
-        target: 8,
-        consumed,
-        unit: WaterUnit.cups
-      }
-    });
+    if (random() < COVERAGE.water) {
+      const consumed = Math.max(0, Math.min(12, randomInt(random, 4, 11) + (isWeekend ? -1 : 0)));
+      await prisma.waterLog.create({
+        data: {
+          dailyEntryId: entry.id,
+          target: 8,
+          consumed,
+          unit: WaterUnit.cups
+        }
+      });
+    }
 
     for (const habit of habits) {
       const shouldTrackToday =
