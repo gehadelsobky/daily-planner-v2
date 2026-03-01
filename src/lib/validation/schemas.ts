@@ -67,6 +67,10 @@ export const moveToTomorrowSchema = z.object({
   task_id: z.string().uuid()
 });
 
+export const deleteTaskSchema = z.object({
+  task_id: z.string().uuid()
+});
+
 export const carryoverActionSchema = z
   .object({
     action: z.enum(["add_today", "reschedule", "dismiss"]),
@@ -133,6 +137,11 @@ export const gratitudeAddSchema = z.object({
 
 export const gratitudeDeleteSchema = z.object({
   item_id: z.string().uuid()
+});
+
+export const gratitudeUpdateSchema = z.object({
+  item_id: z.string().uuid(),
+  text: z.string().min(1).max(500)
 });
 
 export const waterUpdateSchema = z.object({

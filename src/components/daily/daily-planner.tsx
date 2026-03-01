@@ -19,7 +19,7 @@ import {
   useSortable
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
+import { GripVertical, Pencil, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,9 @@ type DailyResponse = {
   };
 };
 
+type EditableSection = "task" | "gratitude" | "top_win" | "quote";
+type ActiveEditor = { section: EditableSection; id: string; value: string } | null;
+
 function AutoSectionCard({
   title,
   itemCount,
@@ -137,6 +140,7 @@ export function DailyPlannerClient({
 }) {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [taskTitle, setTaskTitle] = useState("");
+  const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
   const [gratefulText, setGratefulText] = useState("");
   const [growItemText, setGrowItemText] = useState("");
   const [topWinText, setTopWinText] = useState("");
@@ -205,6 +209,27 @@ export function DailyPlannerClient({
     onSuccess: refresh
   });
 
+  const updateTaskTitle = useMutation({
+    mutationFn: (payload: { task_id: string; title: string }) =>
+      apiFetch("/api/tasks/update", {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      }),
+    onSuccess: async () => {
+      cancelInlineEdit();
+      refresh();
+    }
+  });
+
+  const deleteTask = useMutation({
+    mutationFn: (payload: { task_id: string }) =>
+      apiFetch("/api/tasks/delete", {
+        method: "DELETE",
+        body: JSON.stringify(payload)
+      }),
+    onSuccess: refresh
+  });
+
   const addGratitude = useMutation({
     mutationFn: async () => {
       if (!gratefulText.trim()) return;
@@ -214,6 +239,27 @@ export function DailyPlannerClient({
       });
       setGratefulText("");
     },
+    onSuccess: refresh
+  });
+
+  const updateGratitude = useMutation({
+    mutationFn: (payload: { item_id: string; text: string }) =>
+      apiFetch("/api/gratitude/delete", {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      }),
+    onSuccess: async () => {
+      cancelInlineEdit();
+      refresh();
+    }
+  });
+
+  const deleteGratitude = useMutation({
+    mutationFn: (payload: { item_id: string }) =>
+      apiFetch("/api/gratitude/delete", {
+        method: "DELETE",
+        body: JSON.stringify(payload)
+      }),
     onSuccess: refresh
   });
 
@@ -315,6 +361,29 @@ export function DailyPlannerClient({
       setQuoteItems(updatedQuotes);
     },
     onSuccess: refresh
+  });
+
+  const saveEntrySections = useMutation({
+    mutationFn: async (payload: { topWins: string[]; quotes: string[] }) => {
+      await apiFetch("/api/daily-entry/upsert", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          grow_text: growText,
+          notes_text: notesText,
+          tomorrow_items: tomorrowText
+            .split("\n")
+            .map((x) => x.trim())
+            .filter(Boolean),
+          top_wins_items: payload.topWins,
+          quote_items: payload.quotes
+        })
+      });
+    },
+    onSuccess: async () => {
+      cancelInlineEdit();
+      refresh();
+    }
   });
 
   const saveWater = useMutation({
@@ -446,7 +515,29 @@ export function DailyPlannerClient({
             </div>
             <ul className="space-y-1 text-sm">
               {topWinsItems.map((item, idx) => (
-                <li key={`${item}-${idx}`}>• {item}</li>
+                <li key={`${item}-${idx}`} className="group flex items-center justify-between gap-2">
+                  {isEditing("top_win", String(idx)) ? (
+                    <Input
+                      autoFocus
+                      value={activeEditor?.value ?? ""}
+                      onChange={(e) => setActiveEditorValue(e.target.value)}
+                      onBlur={() => commitTopWinEdit(idx)}
+                      onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitTopWinEdit(idx))}
+                      className="h-8"
+                      disabled={saveEntrySections.isPending}
+                    />
+                  ) : (
+                    <span className="grow">• {item}</span>
+                  )}
+                  <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    <IconActionButton label="Edit top win" onClick={() => startInlineEdit("top_win", String(idx), item)}>
+                      <Pencil className="h-4 w-4" />
+                    </IconActionButton>
+                    <IconActionButton label="Delete top win" onClick={() => removeTopWin(idx)}>
+                      <Trash2 className="h-4 w-4" />
+                    </IconActionButton>
+                  </div>
+                </li>
               ))}
             </ul>
             {topWinsItems.length >= 3 ? (
@@ -467,7 +558,32 @@ export function DailyPlannerClient({
             </div>
             <ul className="space-y-1 text-sm">
               {quoteItems.map((item, idx) => (
-                <li key={`${item}-${idx}`}>• {item}</li>
+                <li key={`${item}-${idx}`} className="group flex items-center justify-between gap-2">
+                  {isEditing("quote", String(idx)) ? (
+                    <Input
+                      autoFocus
+                      value={activeEditor?.value ?? ""}
+                      onChange={(e) => setActiveEditorValue(e.target.value)}
+                      onBlur={() => commitQuoteEdit(idx)}
+                      onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitQuoteEdit(idx))}
+                      className="h-8"
+                      disabled={saveEntrySections.isPending}
+                    />
+                  ) : (
+                    <span className="grow">• {item}</span>
+                  )}
+                  <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    <IconActionButton
+                      label="Edit quote"
+                      onClick={() => startInlineEdit("quote", String(idx), item.replace(/^\"+|\"+$/g, ""))}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </IconActionButton>
+                    <IconActionButton label="Delete quote" onClick={() => removeQuote(idx)}>
+                      <Trash2 className="h-4 w-4" />
+                    </IconActionButton>
+                  </div>
+                </li>
               ))}
             </ul>
           </AutoSectionCard>
@@ -481,7 +597,29 @@ export function DailyPlannerClient({
             </div>
             <ul className="space-y-1 text-sm">
               {daily.data?.entry.gratitudeItems.map((g) => (
-                <li key={g.id}>• {g.text}</li>
+                <li key={g.id} className="group flex items-center justify-between gap-2">
+                  {isEditing("gratitude", g.id) ? (
+                    <Input
+                      autoFocus
+                      value={activeEditor?.value ?? ""}
+                      onChange={(e) => setActiveEditorValue(e.target.value)}
+                      onBlur={() => commitGratitudeEdit(g)}
+                      onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitGratitudeEdit(g))}
+                      className="h-8"
+                      disabled={updateGratitude.isPending}
+                    />
+                  ) : (
+                    <span className="grow">• {g.text}</span>
+                  )}
+                  <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    <IconActionButton label="Edit gratitude item" onClick={() => startInlineEdit("gratitude", g.id, g.text)}>
+                      <Pencil className="h-4 w-4" />
+                    </IconActionButton>
+                    <IconActionButton label="Delete gratitude item" onClick={() => deleteGratitude.mutate({ item_id: g.id })}>
+                      <Trash2 className="h-4 w-4" />
+                    </IconActionButton>
+                  </div>
+                </li>
               ))}
             </ul>
           </AutoSectionCard>
@@ -521,7 +659,7 @@ export function DailyPlannerClient({
             </div>
             <ul className="space-y-1 text-sm">
               {daily.data?.entry.tasks.map((task) => (
-                <li key={task.id} className="flex items-center gap-2">
+                <li key={task.id} className="group flex items-center gap-2">
                   <input
                     type="checkbox"
                     checked={task.isCompleted}
@@ -529,7 +667,35 @@ export function DailyPlannerClient({
                       toggleTask.mutate({ task_id: task.id, is_completed: e.target.checked })
                     }
                   />
-                  <span className={task.isCompleted ? "line-through text-muted-foreground" : ""}>{task.title}</span>
+                  {isEditing("task", task.id) ? (
+                    <Input
+                      autoFocus
+                      value={activeEditor?.value ?? ""}
+                      onChange={(e) => setActiveEditorValue(e.target.value)}
+                      onBlur={() => commitTaskEdit(task)}
+                      onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitTaskEdit(task))}
+                      className="h-8"
+                      disabled={updateTaskTitle.isPending}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startInlineEdit("task", task.id, task.title)}
+                      className={`grow text-left transition-colors hover:text-[#1745C7] ${
+                        task.isCompleted ? "line-through text-muted-foreground" : ""
+                      }`}
+                    >
+                      {task.title}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    <IconActionButton label="Edit task" onClick={() => startInlineEdit("task", task.id, task.title)}>
+                      <Pencil className="h-4 w-4" />
+                    </IconActionButton>
+                    <IconActionButton label="Delete task" onClick={() => deleteTask.mutate({ task_id: task.id })}>
+                      <Trash2 className="h-4 w-4" />
+                    </IconActionButton>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -700,6 +866,99 @@ export function DailyPlannerClient({
       return arrayMove(current, oldIndex, newIndex);
     });
   };
+
+  function isEditing(section: EditableSection, id: string) {
+    return activeEditor?.section === section && activeEditor.id === id;
+  }
+
+  function startInlineEdit(section: EditableSection, id: string, value: string) {
+    setActiveEditor({ section, id, value });
+  }
+
+  function setActiveEditorValue(value: string) {
+    setActiveEditor((current) => (current ? { ...current, value } : current));
+  }
+
+  function cancelInlineEdit() {
+    setActiveEditor(null);
+  }
+
+  function handleInlineEditKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>,
+    onSave: () => void
+  ) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      onSave();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelInlineEdit();
+    }
+  }
+
+  function commitTaskEdit(task: { id: string; title: string }) {
+    const nextTitle = activeEditor?.value.trim() ?? "";
+    if (!nextTitle || nextTitle === task.title) {
+      cancelInlineEdit();
+      return;
+    }
+
+    updateTaskTitle.mutate({
+      task_id: task.id,
+      title: nextTitle
+    });
+  }
+
+  function commitGratitudeEdit(item: { id: string; text: string }) {
+    const nextText = activeEditor?.value.trim() ?? "";
+    if (!nextText || nextText === item.text) {
+      cancelInlineEdit();
+      return;
+    }
+
+    updateGratitude.mutate({
+      item_id: item.id,
+      text: nextText
+    });
+  }
+
+  function commitTopWinEdit(index: number) {
+    const nextValue = activeEditor?.value.trim() ?? "";
+    if (!nextValue || topWinsItems[index] === nextValue) {
+      cancelInlineEdit();
+      return;
+    }
+
+    const nextTopWins = topWinsItems.map((item, idx) => (idx === index ? nextValue : item));
+    setTopWinsItems(nextTopWins);
+    saveEntrySections.mutate({ topWins: nextTopWins, quotes: quoteItems });
+  }
+
+  function commitQuoteEdit(index: number) {
+    const nextValueRaw = activeEditor?.value.trim() ?? "";
+    const nextValue = `"${nextValueRaw.replace(/^"+|"+$/g, "")}"`;
+    if (!nextValueRaw || quoteItems[index] === nextValue) {
+      cancelInlineEdit();
+      return;
+    }
+
+    const nextQuotes = quoteItems.map((item, idx) => (idx === index ? nextValue : item));
+    setQuoteItems(nextQuotes);
+    saveEntrySections.mutate({ topWins: topWinsItems, quotes: nextQuotes });
+  }
+
+  function removeTopWin(index: number) {
+    const nextTopWins = topWinsItems.filter((_, idx) => idx !== index);
+    setTopWinsItems(nextTopWins);
+    saveEntrySections.mutate({ topWins: nextTopWins, quotes: quoteItems });
+  }
+
+  function removeQuote(index: number) {
+    const nextQuotes = quoteItems.filter((_, idx) => idx !== index);
+    setQuoteItems(nextQuotes);
+    saveEntrySections.mutate({ topWins: topWinsItems, quotes: nextQuotes });
+  }
 
   return (
     <main className="mx-auto max-w-7xl space-y-4 px-4 py-6">
@@ -895,6 +1154,28 @@ function SortableSection({
     >
       {children(dragHandle)}
     </div>
+  );
+}
+
+function IconActionButton({
+  label,
+  onClick,
+  children
+}: {
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-[hsl(var(--muted)/0.5)] hover:text-[#1745C7]"
+    >
+      {children}
+    </button>
   );
 }
 

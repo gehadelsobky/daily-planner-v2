@@ -27,12 +27,16 @@ export async function PATCH(req: Request) {
   const updated = await prisma.task.update({
     where: { id: parsed.data.task_id },
     data: {
-      title: parsed.data.title,
-      isCompleted: parsed.data.is_completed,
-      priority: parsed.data.priority,
-      category: parsed.data.category,
-      sortOrder: parsed.data.sort_order,
-      completedAt: parsed.data.is_completed ? new Date() : null
+      ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
+      ...(parsed.data.is_completed !== undefined
+        ? {
+            isCompleted: parsed.data.is_completed,
+            completedAt: parsed.data.is_completed ? new Date() : null
+          }
+        : {}),
+      ...(parsed.data.priority !== undefined ? { priority: parsed.data.priority } : {}),
+      ...(parsed.data.category !== undefined ? { category: parsed.data.category } : {}),
+      ...(parsed.data.sort_order !== undefined ? { sortOrder: parsed.data.sort_order } : {})
     }
   });
 

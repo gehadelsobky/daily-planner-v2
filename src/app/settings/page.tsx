@@ -250,12 +250,48 @@ export default function SettingsPage() {
             saveWeights.mutate(values);
           })}
         >
-          <label className="space-y-1 text-sm">Tasks <Input type="number" {...form.register("tasks")} /></label>
-          <label className="space-y-1 text-sm">Grow <Input type="number" {...form.register("grow")} /></label>
-          <label className="space-y-1 text-sm">Habits <Input type="number" {...form.register("habits")} /></label>
-          <label className="space-y-1 text-sm">Exercise <Input type="number" {...form.register("exercise")} /></label>
-          <label className="space-y-1 text-sm">Grateful <Input type="number" {...form.register("grateful")} /></label>
-          <label className="space-y-1 text-sm">Water <Input type="number" {...form.register("water")} /></label>
+          <label className="space-y-1 text-sm">
+            <span>Tasks</span>
+            <div className="relative">
+              <Input type="number" className="pr-10" {...form.register("tasks")} />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Grow</span>
+            <div className="relative">
+              <Input type="number" className="pr-10" {...form.register("grow")} />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Habits</span>
+            <div className="relative">
+              <Input type="number" className="pr-10" {...form.register("habits")} />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Exercise</span>
+            <div className="relative">
+              <Input type="number" className="pr-10" {...form.register("exercise")} />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Grateful</span>
+            <div className="relative">
+              <Input type="number" className="pr-10" {...form.register("grateful")} />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span>Water</span>
+            <div className="relative">
+              <Input type="number" className="pr-10" {...form.register("water")} />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </label>
           <Button type="submit" className="col-span-2" disabled={saveWeights.isPending}>
             Save weights
           </Button>
