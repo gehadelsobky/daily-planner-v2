@@ -91,7 +91,7 @@ type DailyResponse = {
   };
 };
 
-type EditableSection = "task" | "gratitude" | "top_win" | "quote";
+type EditableSection = "task" | "gratitude" | "top_win" | "quote" | "grow";
 type ActiveEditor = { section: EditableSection; id: string; value: string } | null;
 
 function AutoSectionCard({
@@ -364,12 +364,12 @@ export function DailyPlannerClient({
   });
 
   const saveEntrySections = useMutation({
-    mutationFn: async (payload: { topWins: string[]; quotes: string[] }) => {
+    mutationFn: async (payload: { topWins: string[]; quotes: string[]; grow: string }) => {
       await apiFetch("/api/daily-entry/upsert", {
         method: "POST",
         body: JSON.stringify({
           date: selectedDate,
-          grow_text: growText,
+          grow_text: payload.grow,
           notes_text: notesText,
           tomorrow_items: tomorrowText
             .split("\n")
@@ -645,7 +645,29 @@ export function DailyPlannerClient({
                 .map((x) => x.trim())
                 .filter(Boolean)
                 .map((item, idx) => (
-                  <li key={`${item}-${idx}`}>• {item}</li>
+                  <li key={`${item}-${idx}`} className="group flex items-center justify-between gap-2">
+                    {isEditing("grow", String(idx)) ? (
+                      <Input
+                        autoFocus
+                        value={activeEditor?.value ?? ""}
+                        onChange={(e) => setActiveEditorValue(e.target.value)}
+                        onBlur={() => commitGrowEdit(idx)}
+                        onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitGrowEdit(idx))}
+                        className="h-8"
+                        disabled={saveEntrySections.isPending}
+                      />
+                    ) : (
+                      <span className="grow">• {item}</span>
+                    )}
+                    <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                      <IconActionButton label="Edit grow item" onClick={() => startInlineEdit("grow", String(idx), item)}>
+                        <Pencil className="h-4 w-4" />
+                      </IconActionButton>
+                      <IconActionButton label="Delete grow item" onClick={() => removeGrowItem(idx)}>
+                        <Trash2 className="h-4 w-4" />
+                      </IconActionButton>
+                    </div>
+                  </li>
                 ))}
             </ul>
           </AutoSectionCard>
@@ -932,7 +954,7 @@ export function DailyPlannerClient({
 
     const nextTopWins = topWinsItems.map((item, idx) => (idx === index ? nextValue : item));
     setTopWinsItems(nextTopWins);
-    saveEntrySections.mutate({ topWins: nextTopWins, quotes: quoteItems });
+    saveEntrySections.mutate({ topWins: nextTopWins, quotes: quoteItems, grow: growText });
   }
 
   function commitQuoteEdit(index: number) {
@@ -945,19 +967,47 @@ export function DailyPlannerClient({
 
     const nextQuotes = quoteItems.map((item, idx) => (idx === index ? nextValue : item));
     setQuoteItems(nextQuotes);
-    saveEntrySections.mutate({ topWins: topWinsItems, quotes: nextQuotes });
+    saveEntrySections.mutate({ topWins: topWinsItems, quotes: nextQuotes, grow: growText });
+  }
+
+  function commitGrowEdit(index: number) {
+    const nextValue = activeEditor?.value.trim() ?? "";
+    const growItems = growText
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
+    if (!nextValue || growItems[index] === nextValue) {
+      cancelInlineEdit();
+      return;
+    }
+
+    const nextGrowItems = growItems.map((item, idx) => (idx === index ? nextValue : item));
+    const nextGrowText = nextGrowItems.join("\n");
+    setGrowText(nextGrowText);
+    saveEntrySections.mutate({ topWins: topWinsItems, quotes: quoteItems, grow: nextGrowText });
   }
 
   function removeTopWin(index: number) {
     const nextTopWins = topWinsItems.filter((_, idx) => idx !== index);
     setTopWinsItems(nextTopWins);
-    saveEntrySections.mutate({ topWins: nextTopWins, quotes: quoteItems });
+    saveEntrySections.mutate({ topWins: nextTopWins, quotes: quoteItems, grow: growText });
   }
 
   function removeQuote(index: number) {
     const nextQuotes = quoteItems.filter((_, idx) => idx !== index);
     setQuoteItems(nextQuotes);
-    saveEntrySections.mutate({ topWins: topWinsItems, quotes: nextQuotes });
+    saveEntrySections.mutate({ topWins: topWinsItems, quotes: nextQuotes, grow: growText });
+  }
+
+  function removeGrowItem(index: number) {
+    const nextGrowItems = growText
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .filter((_, idx) => idx !== index);
+    const nextGrowText = nextGrowItems.join("\n");
+    setGrowText(nextGrowText);
+    saveEntrySections.mutate({ topWins: topWinsItems, quotes: quoteItems, grow: nextGrowText });
   }
 
   return (
