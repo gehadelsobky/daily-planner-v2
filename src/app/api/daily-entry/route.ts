@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { formatDateInTimezone, toDateOnlyUtc, todayInTimezone } from "@/lib/date";
 import { CarryoverState } from "@prisma/client";
 import { xpFromScore } from "@/lib/gamification";
+import { evaluateGamification } from "@/lib/gamification/evaluator";
 import { SYSTEM_DEFAULT_WATER_TARGET } from "@/lib/score/constants";
 import { ensureCarryoverReminder } from "@/lib/notifications";
 
@@ -91,6 +92,7 @@ export async function GET(req: Request) {
       xp: xpFromScore(score.scorePercent)
     }
   });
+  await evaluateGamification(auth.user.id, parsed.data.date, auth.user.timezone);
   const hasPlannedTasks = entry.tasks.length > 0;
   const allTasksCompleted = hasPlannedTasks && entry.tasks.every((t) => t.isCompleted);
   const requiredBreakdown = score.breakdown.filter((item) => REQUIRED_KEYS.has(item.key));
