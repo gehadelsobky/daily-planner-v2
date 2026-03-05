@@ -56,7 +56,7 @@ type DashboardResponse = {
 export default function DashboardPage() {
   const [range, setRange] = useState<"week" | "month">("week");
 
-  const { data } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["dashboard", range],
     queryFn: () => apiFetch<DashboardResponse>(`/api/dashboard?range=${range}`)
   });
@@ -78,6 +78,20 @@ export default function DashboardPage() {
           </Button>
         </div>
       </Card>
+
+      {isLoading ? (
+        <Card>
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+        </Card>
+      ) : null}
+
+      {isError ? (
+        <Card>
+          <p className="text-sm text-destructive">
+            Failed to load dashboard data: {(error as Error)?.message ?? "Unknown error"}
+          </p>
+        </Card>
+      ) : null}
 
       <Card className="space-y-2">
         <h2 className="font-semibold">Average Score</h2>
