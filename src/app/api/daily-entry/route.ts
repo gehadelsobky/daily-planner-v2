@@ -7,8 +7,8 @@ import { dateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
 import { formatDateInTimezone, toDateOnlyUtc, todayInTimezone } from "@/lib/date";
 import { CarryoverState } from "@prisma/client";
-import { xpFromScore } from "@/lib/gamification";
 import { evaluateGamification } from "@/lib/gamification/evaluator";
+import { upsertXpForDay } from "@/lib/gamification/xp";
 import { SYSTEM_DEFAULT_WATER_TARGET } from "@/lib/score/constants";
 import { ensureCarryoverReminder } from "@/lib/notifications";
 
@@ -74,25 +74,8 @@ export async function GET(req: Request) {
   const effectiveWaterTarget =
     entry.waterLog?.target ?? auth.user.waterDefaultTarget ?? SYSTEM_DEFAULT_WATER_TARGET;
   const effectiveWaterUnit = entry.waterLog?.unit ?? auth.user.waterDefaultUnit;
-  await prisma.xPEvent.upsert({
-    where: {
-      userId_date_reason: {
-        userId: auth.user.id,
-        date: dateUtc,
-        reason: "daily_score"
-      }
-    },
-    create: {
-      userId: auth.user.id,
-      date: dateUtc,
-      reason: "daily_score",
-      xp: xpFromScore(score.scorePercent)
-    },
-    update: {
-      xp: xpFromScore(score.scorePercent)
-    }
-  });
-  await evaluateGamification(auth.user.id, parsed.data.date, auth.user.timezone);
+  const milestones = await evaluateGamification(auth.user.id, parsed.data.date, auth.user.timezone);
+  await upsertXpForDay(auth.user.id, parsed.data.date, auth.user.timezone, score, milestones);
   const hasPlannedTasks = entry.tasks.length > 0;
   const allTasksCompleted = hasPlannedTasks && entry.tasks.every((t) => t.isCompleted);
   const requiredBreakdown = score.breakdown.filter((item) => REQUIRED_KEYS.has(item.key));

@@ -110,27 +110,43 @@ function findRollingWindowCompletionDate(
   return null;
 }
 
-async function awardBadge(userId: string, code: string, earnedOn: Date) {
+async function awardBadge(userId: string, code: string, earnedOn: Date): Promise<boolean> {
   const badge = await prisma.badge.findUnique({ where: { code } });
-  if (!badge) return;
+  if (!badge) return false;
 
-  await prisma.userBadge.upsert({
+  const existing = await prisma.userBadge.findUnique({
     where: {
       userId_badgeId: {
         userId,
         badgeId: badge.id
       }
-    },
-    create: {
+    }
+  });
+  if (existing) return false;
+
+  await prisma.userBadge.create({
+    data: {
       userId,
       badgeId: badge.id,
       earnedOn
-    },
-    update: {}
+    }
   });
+
+  return true;
 }
 
-export async function evaluateGamification(userId: string, asOfDate: string, timezone: string) {
+export type GamificationEvaluationResult = {
+  awardedBadges: string[];
+  completedChallenges: string[];
+};
+
+export async function evaluateGamification(
+  userId: string,
+  asOfDate: string,
+  timezone: string
+): Promise<GamificationEvaluationResult> {
+  const awardedBadges = new Set<string>();
+  const completedChallenges = new Set<string>();
   const asOfUtc = toDateOnlyUtc(asOfDate, timezone);
   const [user, entries] = await Promise.all([
     prisma.user.findUnique({
@@ -152,7 +168,7 @@ export async function evaluateGamification(userId: string, asOfDate: string, tim
   ]);
 
   if (!entries.length) {
-    return;
+    return { awardedBadges: [], completedChallenges: [] };
   }
 
   const defaultWaterUnit = user?.waterDefaultUnit ?? "cups";
@@ -180,7 +196,8 @@ export async function evaluateGamification(userId: string, asOfDate: string, tim
     (day) => day.plannedTasks > 0 && day.completedTasks === day.plannedTasks
   );
   if (taskFinisherDays.length >= 3) {
-    await awardBadge(userId, "task_finisher", taskFinisherDays[2].dateUtc);
+    const created = await awardBadge(userId, "task_finisher", taskFinisherDays[2].dateUtc);
+    if (created) awardedBadges.add("task_finisher");
   }
 
   const hydrationSuccessDays = dayRecords.filter((day) => day.waterMet).map((day) => day.date);
@@ -191,13 +208,15 @@ export async function evaluateGamification(userId: string, asOfDate: string, tim
     (day) => day.date
   );
   if (hydrationBadgeDate) {
-    await awardBadge(userId, "hydration_hit", toDateOnlyUtc(hydrationBadgeDate, timezone));
+    const created = await awardBadge(userId, "hydration_hit", toDateOnlyUtc(hydrationBadgeDate, timezone));
+    if (created) awardedBadges.add("hydration_hit");
   }
 
   const growDays = dayRecords.filter((day) => day.growUsed).map((day) => day.date);
   const growthBadgeDate = findRollingWindowCompletionDate(growDays, 7, 5);
   if (growthBadgeDate) {
-    await awardBadge(userId, "growth_note", toDateOnlyUtc(growthBadgeDate, timezone));
+    const created = await awardBadge(userId, "growth_note", toDateOnlyUtc(growthBadgeDate, timezone));
+    if (created) awardedBadges.add("growth_note");
   }
 
   const scoreResults = await Promise.all(
@@ -215,7 +234,8 @@ export async function evaluateGamification(userId: string, asOfDate: string, tim
     (item) => item.date
   );
   if (consistencyBadgeDate) {
-    await awardBadge(userId, "consistency_builder", toDateOnlyUtc(consistencyBadgeDate, timezone));
+    const created = await awardBadge(userId, "consistency_builder", toDateOnlyUtc(consistencyBadgeDate, timezone));
+    if (created) awardedBadges.add("consistency_builder");
   }
 
   const balancedDay = scoreResults.find(
@@ -226,7 +246,8 @@ export async function evaluateGamification(userId: string, asOfDate: string, tim
       )
   );
   if (balancedDay) {
-    await awardBadge(userId, "balanced_day", balancedDay.dateUtc);
+    const created = await awardBadge(userId, "balanced_day", balancedDay.dateUtc);
+    if (created) awardedBadges.add("balanced_day");
   }
 
   const hydrationChallenge = await prisma.challenge.findFirst({
@@ -255,6 +276,20 @@ export async function evaluateGamification(userId: string, asOfDate: string, tim
       completedAt: currentStreak >= targetDays ? asOfDate : null
     };
 
+    const existing = await prisma.userChallenge.findUnique({
+      where: {
+        userId_challengeId: {
+          userId,
+          challengeId: hydrationChallenge.id
+        }
+      }
+    });
+    const previouslyCompleted = Boolean(
+      existing?.progress &&
+        typeof existing.progress === "object" &&
+        (existing.progress as { completedAt?: unknown }).completedAt
+    );
+
     await prisma.userChallenge.upsert({
       where: {
         userId_challengeId: {
@@ -272,5 +307,14 @@ export async function evaluateGamification(userId: string, asOfDate: string, tim
         progress
       }
     });
+
+    if (!previouslyCompleted && progress.completedAt) {
+      completedChallenges.add(hydrationChallenge.code);
+    }
   }
+
+  return {
+    awardedBadges: Array.from(awardedBadges),
+    completedChallenges: Array.from(completedChallenges)
+  };
 }

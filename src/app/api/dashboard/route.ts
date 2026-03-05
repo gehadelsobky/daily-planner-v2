@@ -7,6 +7,7 @@ import { formatDateInTimezone } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { levelFromXp } from "@/lib/gamification";
 import { evaluateGamification } from "@/lib/gamification/evaluator";
+import { upsertXpForDay } from "@/lib/gamification/xp";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
@@ -25,7 +26,9 @@ export async function GET(req: Request) {
   const days = parsed.data.range === "week" ? 7 : 30;
   const now = new Date();
   const today = formatDateInTimezone(now, auth.user.timezone);
-  await evaluateGamification(auth.user.id, today, auth.user.timezone);
+  const todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone);
+  const milestones = await evaluateGamification(auth.user.id, today, auth.user.timezone);
+  await upsertXpForDay(auth.user.id, today, auth.user.timezone, todayScore, milestones);
   const series = [] as Array<{ date: string; score: number }>;
 
   for (let i = days - 1; i >= 0; i -= 1) {
