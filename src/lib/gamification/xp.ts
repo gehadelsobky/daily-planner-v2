@@ -16,6 +16,29 @@ type XpMilestones = {
   completedChallenges: string[];
 };
 
+export type DailyXpBreakdown = {
+  baseXp: number;
+  bonuses: {
+    completedDay: number;
+    taskFinisher: number;
+    hydration: number;
+    habitMastery: number;
+    exercise: number;
+    reflection: number;
+  };
+  streaks: {
+    scoreStreakDays: number;
+    scoreStreakXp: number;
+    hydrationStreakDays: number;
+    hydrationStreakXp: number;
+    habitStreakDays: number;
+    habitStreakXp: number;
+  };
+  recurringRaw: number;
+  recurringCapped: number;
+  capApplied: boolean;
+};
+
 function normalizedPart(score: DailyScoreResult, key: ScoreComponentKey): number | null {
   const part = score.breakdown.find((item) => item.key === key);
   return part ? part.normalizedScore : null;
@@ -126,43 +149,8 @@ export async function upsertXpForDay(
   milestones: XpMilestones
 ) {
   const dateUtc = toDateOnlyUtc(dateString, timezone);
-  const baseXp = Math.max(0, Math.floor(score.scorePercent));
-
-  const tasksNormalized = normalizedPart(score, "tasks") ?? 0;
-  const waterNormalized = normalizedPart(score, "water") ?? 0;
-  const habitsNormalized = normalizedPart(score, "habits");
-  const habitsNa = isNaPart(score, "habits");
-  const exerciseNormalized = normalizedPart(score, "exercise") ?? 0;
-  const growNormalized = normalizedPart(score, "grow") ?? 0;
-  const gratefulNormalized = normalizedPart(score, "grateful") ?? 0;
-
-  const completedDayBonus = isCompletedDay(score) ? 10 : 0;
-  const taskFinisherBonus = tasksNormalized >= 1 ? 5 : 0;
-  const hydrationBonus = waterNormalized >= 1 ? 5 : 0;
-  const habitMasteryBonus = !habitsNa && (habitsNormalized ?? 0) >= 1 ? 5 : 0;
-  const exerciseBonus = exerciseNormalized >= 1 ? 5 : 0;
-  const reflectionBonus = growNormalized >= 1 && gratefulNormalized >= 1 ? 5 : 0;
-
-  const recentScores = await getRecentScores(userId, dateString, timezone);
-  const scoreStreak = currentScoreStreak(recentScores);
-  const hydrationStreak = currentHydrationStreak(recentScores);
-  const habitStreak = currentHabitStreak(recentScores);
-  const scoreStreakXp = streakBonus(scoreStreak);
-  const hydrationStreakXp = hydrationStreakBonus(hydrationStreak);
-  const habitStreakXp = habitStreakBonus(habitStreak);
-
-  const recurringXpRaw =
-    baseXp +
-    completedDayBonus +
-    taskFinisherBonus +
-    hydrationBonus +
-    habitMasteryBonus +
-    exerciseBonus +
-    reflectionBonus +
-    scoreStreakXp +
-    hydrationStreakXp +
-    habitStreakXp;
-  const recurringXp = Math.min(DAILY_RECURRING_XP_CAP, recurringXpRaw);
+  const breakdown = await calculateDailyRecurringXpBreakdown(userId, dateString, timezone, score);
+  const recurringXp = breakdown.recurringCapped;
 
   await prisma.xPEvent.deleteMany({
     where: {
@@ -226,4 +214,72 @@ export async function upsertXpForDay(
       }
     });
   }
+}
+
+export async function calculateDailyRecurringXpBreakdown(
+  userId: string,
+  dateString: string,
+  timezone: string,
+  score: DailyScoreResult
+): Promise<DailyXpBreakdown> {
+  const baseXp = Math.max(0, Math.floor(score.scorePercent));
+
+  const tasksNormalized = normalizedPart(score, "tasks") ?? 0;
+  const waterNormalized = normalizedPart(score, "water") ?? 0;
+  const habitsNormalized = normalizedPart(score, "habits");
+  const habitsNa = isNaPart(score, "habits");
+  const exerciseNormalized = normalizedPart(score, "exercise") ?? 0;
+  const growNormalized = normalizedPart(score, "grow") ?? 0;
+  const gratefulNormalized = normalizedPart(score, "grateful") ?? 0;
+
+  const completedDayBonus = isCompletedDay(score) ? 10 : 0;
+  const taskFinisherBonus = tasksNormalized >= 1 ? 5 : 0;
+  const hydrationBonus = waterNormalized >= 1 ? 5 : 0;
+  const habitMasteryBonus = !habitsNa && (habitsNormalized ?? 0) >= 1 ? 5 : 0;
+  const exerciseBonus = exerciseNormalized >= 1 ? 5 : 0;
+  const reflectionBonus = growNormalized >= 1 && gratefulNormalized >= 1 ? 5 : 0;
+
+  const recentScores = await getRecentScores(userId, dateString, timezone);
+  const scoreStreak = currentScoreStreak(recentScores);
+  const hydrationStreak = currentHydrationStreak(recentScores);
+  const habitStreak = currentHabitStreak(recentScores);
+  const scoreStreakXp = streakBonus(scoreStreak);
+  const hydrationStreakXp = hydrationStreakBonus(hydrationStreak);
+  const habitStreakXp = habitStreakBonus(habitStreak);
+
+  const recurringRaw =
+    baseXp +
+    completedDayBonus +
+    taskFinisherBonus +
+    hydrationBonus +
+    habitMasteryBonus +
+    exerciseBonus +
+    reflectionBonus +
+    scoreStreakXp +
+    hydrationStreakXp +
+    habitStreakXp;
+  const recurringCapped = Math.min(DAILY_RECURRING_XP_CAP, recurringRaw);
+
+  return {
+    baseXp,
+    bonuses: {
+      completedDay: completedDayBonus,
+      taskFinisher: taskFinisherBonus,
+      hydration: hydrationBonus,
+      habitMastery: habitMasteryBonus,
+      exercise: exerciseBonus,
+      reflection: reflectionBonus
+    },
+    streaks: {
+      scoreStreakDays: scoreStreak,
+      scoreStreakXp,
+      hydrationStreakDays: hydrationStreak,
+      hydrationStreakXp,
+      habitStreakDays: habitStreak,
+      habitStreakXp
+    },
+    recurringRaw,
+    recurringCapped,
+    capApplied: recurringRaw > recurringCapped
+  };
 }

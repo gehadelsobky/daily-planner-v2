@@ -16,6 +16,34 @@ type DashboardResponse = {
     level: number;
     currentLevelXp: number;
     nextLevelXp: number;
+    todayXp: {
+      date: string;
+      recurring: {
+        baseXp: number;
+        bonuses: {
+          completedDay: number;
+          taskFinisher: number;
+          hydration: number;
+          habitMastery: number;
+          exercise: number;
+          reflection: number;
+        };
+        streaks: {
+          scoreStreakDays: number;
+          scoreStreakXp: number;
+          hydrationStreakDays: number;
+          hydrationStreakXp: number;
+          habitStreakDays: number;
+          habitStreakXp: number;
+        };
+        recurringRaw: number;
+        recurringCapped: number;
+        capApplied: boolean;
+      };
+      milestones: Array<{ reason: string; xp: number }>;
+      milestoneXp: number;
+      totalTodayXp: number;
+    };
     badges: Array<{ earnedOn: string; badge: { name: string; description: string } }>;
     challenges: Array<{
       joinedOn: string;
@@ -64,6 +92,59 @@ export default function DashboardPage() {
         <p>Level {data?.gamification.level ?? 1}</p>
         <Progress value={levelProgress} />
         <p className="text-sm text-muted-foreground">Total XP: {data?.gamification.totalXp ?? 0}</p>
+      </Card>
+
+      <Card className="space-y-3">
+        <h2 className="font-semibold">Today XP Breakdown</h2>
+        {data?.gamification.todayXp ? (
+          <div className="space-y-2 text-sm">
+            <Row label="Date" value={data.gamification.todayXp.date} />
+            <Row label="Base XP (score)" value={`+${data.gamification.todayXp.recurring.baseXp}`} />
+            <Row label="Completed day bonus" value={`+${data.gamification.todayXp.recurring.bonuses.completedDay}`} />
+            <Row label="Task finisher bonus" value={`+${data.gamification.todayXp.recurring.bonuses.taskFinisher}`} />
+            <Row label="Hydration bonus" value={`+${data.gamification.todayXp.recurring.bonuses.hydration}`} />
+            <Row label="Habit mastery bonus" value={`+${data.gamification.todayXp.recurring.bonuses.habitMastery}`} />
+            <Row label="Exercise bonus" value={`+${data.gamification.todayXp.recurring.bonuses.exercise}`} />
+            <Row label="Reflection bonus" value={`+${data.gamification.todayXp.recurring.bonuses.reflection}`} />
+            <Row
+              label={`Score streak (${data.gamification.todayXp.recurring.streaks.scoreStreakDays}d)`}
+              value={`+${data.gamification.todayXp.recurring.streaks.scoreStreakXp}`}
+            />
+            <Row
+              label={`Hydration streak (${data.gamification.todayXp.recurring.streaks.hydrationStreakDays}d)`}
+              value={`+${data.gamification.todayXp.recurring.streaks.hydrationStreakXp}`}
+            />
+            <Row
+              label={`Habit streak (${data.gamification.todayXp.recurring.streaks.habitStreakDays}d)`}
+              value={`+${data.gamification.todayXp.recurring.streaks.habitStreakXp}`}
+            />
+            <Row label="Recurring XP (before cap)" value={`${data.gamification.todayXp.recurring.recurringRaw}`} />
+            <Row label="Recurring XP (after cap)" value={`${data.gamification.todayXp.recurring.recurringCapped}`} />
+            {data.gamification.todayXp.recurring.capApplied ? (
+              <p className="text-xs text-muted-foreground">
+                Daily recurring cap applied ({data.gamification.todayXp.recurring.recurringRaw} to{" "}
+                {data.gamification.todayXp.recurring.recurringCapped}).
+              </p>
+            ) : null}
+            <Row label="Milestone XP today" value={`+${data.gamification.todayXp.milestoneXp}`} />
+            {data.gamification.todayXp.milestones.length ? (
+              <ul className="space-y-1 text-xs text-muted-foreground">
+                {data.gamification.todayXp.milestones.map((event, idx) => (
+                  <li key={`${event.reason}-${idx}`}>
+                    {event.reason} (+{event.xp})
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">No badge/challenge XP milestones today.</p>
+            )}
+            <div className="border-t border-border pt-2">
+              <Row label="Total XP earned today" value={`${data.gamification.todayXp.totalTodayXp}`} strong />
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No XP breakdown available.</p>
+        )}
       </Card>
 
       <Card className="space-y-3">
@@ -127,4 +208,13 @@ function formatProgress(progress: unknown): string {
     return `${record.completed}/${record.target}`;
   }
   return "In progress";
+}
+
+function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between gap-4 ${strong ? "font-semibold" : ""}`}>
+      <span className="text-muted-foreground">{label}</span>
+      <span>{value}</span>
+    </div>
+  );
 }

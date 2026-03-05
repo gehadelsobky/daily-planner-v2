@@ -3,11 +3,11 @@ import { z } from "zod";
 import { subDays } from "date-fns";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/guard";
-import { formatDateInTimezone } from "@/lib/date";
+import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { levelFromXp } from "@/lib/gamification";
 import { evaluateGamification } from "@/lib/gamification/evaluator";
-import { upsertXpForDay } from "@/lib/gamification/xp";
+import { calculateDailyRecurringXpBreakdown, upsertXpForDay } from "@/lib/gamification/xp";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
@@ -26,9 +26,16 @@ export async function GET(req: Request) {
   const days = parsed.data.range === "week" ? 7 : 30;
   const now = new Date();
   const today = formatDateInTimezone(now, auth.user.timezone);
+  const todayUtc = toDateOnlyUtc(today, auth.user.timezone);
   const todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone);
   const milestones = await evaluateGamification(auth.user.id, today, auth.user.timezone);
   await upsertXpForDay(auth.user.id, today, auth.user.timezone, todayScore, milestones);
+  const todayRecurring = await calculateDailyRecurringXpBreakdown(
+    auth.user.id,
+    today,
+    auth.user.timezone,
+    todayScore
+  );
   const series = [] as Array<{ date: string; score: number }>;
 
   for (let i = days - 1; i >= 0; i -= 1) {
@@ -40,6 +47,11 @@ export async function GET(req: Request) {
 
   const xpEvents = await prisma.xPEvent.findMany({ where: { userId: auth.user.id } });
   const totalXp = xpEvents.reduce((sum, e) => sum + e.xp, 0);
+  const todayXpEvents = xpEvents.filter((event) => event.date.getTime() === todayUtc.getTime());
+  const todayMilestones = todayXpEvents
+    .filter((event) => event.reason.startsWith("badge:") || event.reason.startsWith("challenge:"))
+    .map((event) => ({ reason: event.reason, xp: event.xp }));
+  const todayMilestoneXp = todayMilestones.reduce((sum, event) => sum + event.xp, 0);
   const level = levelFromXp(totalXp);
 
   const bestDay = series.reduce((best, item) => (item.score > best.score ? item : best), series[0]);
@@ -54,6 +66,13 @@ export async function GET(req: Request) {
     gamification: {
       totalXp,
       ...level,
+      todayXp: {
+        date: today,
+        recurring: todayRecurring,
+        milestones: todayMilestones,
+        milestoneXp: todayMilestoneXp,
+        totalTodayXp: todayRecurring.recurringCapped + todayMilestoneXp
+      },
       badges: await prisma.userBadge.findMany({
         where: { userId: auth.user.id },
         include: { badge: true }
