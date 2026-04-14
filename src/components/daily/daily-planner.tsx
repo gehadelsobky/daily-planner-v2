@@ -117,12 +117,12 @@ function AutoSectionCard({
 
   return (
     <Card className="flex h-full flex-col gap-4 overflow-hidden">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
           <h2 className="font-semibold tracking-tight">{title}</h2>
           <p className="text-xs text-muted-foreground">Capture progress and keep this section current.</p>
         </div>
-        <div className="flex items-center gap-2 text-xs shrink-0">
+        <div className="flex flex-wrap items-center gap-2 text-xs md:shrink-0">
           {dragHandle}
           <Badge>{itemCount} items</Badge>
           <Button variant="ghost" onClick={() => setIsOpen((v) => !v)} className="h-8 px-3 py-1">
@@ -878,8 +878,9 @@ export function DailyPlannerClient({
                 <Badge>{taskStats.percent}% complete</Badge>
               </div>
               <Progress value={taskStats.percent} />
-              <div className="grid gap-2 lg:grid-cols-[minmax(0,1.1fr),180px,180px]">
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),180px,180px]">
                 <Input
+                  className="md:col-span-2 xl:col-span-1"
                   value={taskSearch}
                   onChange={(e) => setTaskSearch(e.target.value)}
                   placeholder="Search tasks, category, or priority"
@@ -904,8 +905,13 @@ export function DailyPlannerClient({
                 </select>
               </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr),140px,160px,auto]">
-              <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Add task" />
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr),140px,180px,auto]">
+              <Input
+                className="md:col-span-2 xl:col-span-1"
+                value={taskTitle}
+                onChange={(e) => setTaskTitle(e.target.value)}
+                placeholder="Add task"
+              />
               <select
                 value={taskPriority}
                 onChange={(e) => setTaskPriority(e.target.value as "high" | "medium" | "low")}
@@ -920,7 +926,9 @@ export function DailyPlannerClient({
                 onChange={(e) => setTaskCategory(e.target.value)}
                 placeholder="Category (optional)"
               />
-              <Button onClick={() => addTask.mutate()}>Add</Button>
+              <Button className="md:col-span-2 xl:col-span-1" onClick={() => addTask.mutate()}>
+                Add
+              </Button>
             </div>
             <ul className="space-y-1 text-sm">
               {visibleTasks.map((task) => (
@@ -966,7 +974,7 @@ export function DailyPlannerClient({
                           </span>
                         ) : null}
                       </div>
-                      <div className="grid gap-2 sm:grid-cols-[140px,minmax(0,1fr)]">
+                      <div className="grid gap-2 md:grid-cols-2">
                         <select
                           value={task.priority}
                           onChange={(e) =>
