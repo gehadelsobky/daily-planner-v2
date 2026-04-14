@@ -62,7 +62,13 @@ type DailyResponse = {
     tomorrowItems: string[];
     topWinsItems: string[];
     quoteItems: string[];
-    tasks: Array<{ id: string; title: string; isCompleted: boolean }>;
+    tasks: Array<{
+      id: string;
+      title: string;
+      isCompleted: boolean;
+      priority: "high" | "medium" | "low";
+      category: string | null;
+    }>;
     gratitudeItems: Array<{ id: string; text: string }>;
     waterLog: { consumed: number; target: number | null } | null;
     exerciseLogs: Array<{ id: string; type: string; minutes: number }>;
@@ -142,6 +148,8 @@ export function DailyPlannerClient({
 }) {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [taskTitle, setTaskTitle] = useState("");
+  const [taskPriority, setTaskPriority] = useState<"high" | "medium" | "low">("medium");
+  const [taskCategory, setTaskCategory] = useState("");
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
   const [gratefulText, setGratefulText] = useState("");
   const [growItemText, setGrowItemText] = useState("");
@@ -197,9 +205,16 @@ export function DailyPlannerClient({
       if (!taskTitle.trim()) return;
       await apiFetch("/api/tasks/create", {
         method: "POST",
-        body: JSON.stringify({ date: selectedDate, title: taskTitle })
+        body: JSON.stringify({
+          date: selectedDate,
+          title: taskTitle,
+          priority: taskPriority,
+          category: taskCategory.trim() || null
+        })
       });
       setTaskTitle("");
+      setTaskPriority("medium");
+      setTaskCategory("");
     },
     onSuccess: refresh
   });
@@ -223,6 +238,19 @@ export function DailyPlannerClient({
       cancelInlineEdit();
       refresh();
     }
+  });
+
+  const updateTaskMeta = useMutation({
+    mutationFn: (payload: {
+      task_id: string;
+      priority?: "high" | "medium" | "low";
+      category?: string | null;
+    }) =>
+      apiFetch("/api/tasks/update", {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      }),
+    onSuccess: refresh
   });
 
   const deleteTask = useMutation({
@@ -765,48 +793,106 @@ export function DailyPlannerClient({
       case "tasks":
         return (
           <AutoSectionCard title="Tasks" itemCount={daily.data?.entry.tasks.length ?? 0} {...sectionProps}>
-            <div className="flex gap-2">
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr),140px,160px,auto]">
               <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Add task" />
+              <select
+                value={taskPriority}
+                onChange={(e) => setTaskPriority(e.target.value as "high" | "medium" | "low")}
+                className="h-10 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+              >
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <Input
+                value={taskCategory}
+                onChange={(e) => setTaskCategory(e.target.value)}
+                placeholder="Category (optional)"
+              />
               <Button onClick={() => addTask.mutate()}>Add</Button>
             </div>
             <ul className="space-y-1 text-sm">
               {daily.data?.entry.tasks.map((task) => (
-                <li key={task.id} className="group flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={task.isCompleted}
-                    onChange={(e) =>
-                      toggleTask.mutate({ task_id: task.id, is_completed: e.target.checked })
-                    }
-                  />
-                  {isEditing("task", task.id) ? (
-                    <Input
-                      autoFocus
-                      value={activeEditor?.value ?? ""}
-                      onChange={(e) => setActiveEditorValue(e.target.value)}
-                      onBlur={() => commitTaskEdit(task)}
-                      onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitTaskEdit(task))}
-                      className="h-8"
-                      disabled={updateTaskTitle.isPending}
+                <li key={task.id} className="group rounded-md border border-border p-2">
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={task.isCompleted}
+                      onChange={(e) =>
+                        toggleTask.mutate({ task_id: task.id, is_completed: e.target.checked })
+                      }
+                      className="mt-1"
                     />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => startInlineEdit("task", task.id, task.title)}
-                      className={`grow text-left transition-colors hover:text-[#1745C7] ${
-                        task.isCompleted ? "line-through text-muted-foreground" : ""
-                      }`}
-                    >
-                      {task.title}
-                    </button>
-                  )}
-                  <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                    <IconActionButton label="Edit task" onClick={() => startInlineEdit("task", task.id, task.title)}>
-                      <Pencil className="h-4 w-4" />
-                    </IconActionButton>
-                    <IconActionButton label="Delete task" onClick={() => deleteTask.mutate({ task_id: task.id })}>
-                      <Trash2 className="h-4 w-4" />
-                    </IconActionButton>
+                    <div className="min-w-0 grow space-y-2">
+                      {isEditing("task", task.id) ? (
+                        <Input
+                          autoFocus
+                          value={activeEditor?.value ?? ""}
+                          onChange={(e) => setActiveEditorValue(e.target.value)}
+                          onBlur={() => commitTaskEdit(task)}
+                          onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitTaskEdit(task))}
+                          className="h-8"
+                          disabled={updateTaskTitle.isPending}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => startInlineEdit("task", task.id, task.title)}
+                          className={`w-full text-left transition-colors hover:text-[#1745C7] ${
+                            task.isCompleted ? "line-through text-muted-foreground" : ""
+                          }`}
+                        >
+                          {task.title}
+                        </button>
+                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${priorityClasses(task.priority)}`}>
+                          {capitalizeTaskPriority(task.priority)}
+                        </span>
+                        {task.category ? (
+                          <span className="rounded-full bg-[hsl(var(--muted))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))]">
+                            {task.category}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-[140px,minmax(0,1fr)]">
+                        <select
+                          value={task.priority}
+                          onChange={(e) =>
+                            updateTaskMeta.mutate({
+                              task_id: task.id,
+                              priority: e.target.value as "high" | "medium" | "low"
+                            })
+                          }
+                          className="h-9 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                        >
+                          <option value="high">High</option>
+                          <option value="medium">Medium</option>
+                          <option value="low">Low</option>
+                        </select>
+                        <Input
+                          defaultValue={task.category ?? ""}
+                          onBlur={(e) => commitTaskCategory(task, e.currentTarget.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              commitTaskCategory(task, e.currentTarget.value);
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          placeholder="Category"
+                          className="h-9"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                      <IconActionButton label="Edit task" onClick={() => startInlineEdit("task", task.id, task.title)}>
+                        <Pencil className="h-4 w-4" />
+                      </IconActionButton>
+                      <IconActionButton label="Delete task" onClick={() => deleteTask.mutate({ task_id: task.id })}>
+                        <Trash2 className="h-4 w-4" />
+                      </IconActionButton>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -1019,6 +1105,21 @@ export function DailyPlannerClient({
     updateTaskTitle.mutate({
       task_id: task.id,
       title: nextTitle
+    });
+  }
+
+  function commitTaskCategory(
+    task: { id: string; category: string | null },
+    nextCategoryRaw: string
+  ) {
+    const nextCategory = nextCategoryRaw.trim() || null;
+    if ((task.category ?? null) === nextCategory) {
+      return;
+    }
+
+    updateTaskMeta.mutate({
+      task_id: task.id,
+      category: nextCategory
     });
   }
 
@@ -1522,6 +1623,20 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <p className="text-sm font-medium">{value}</p>
     </div>
   );
+}
+
+function priorityClasses(priority: "high" | "medium" | "low") {
+  if (priority === "high") {
+    return "bg-red-100 text-red-700";
+  }
+  if (priority === "medium") {
+    return "bg-amber-100 text-amber-700";
+  }
+  return "bg-sky-100 text-sky-700";
+}
+
+function capitalizeTaskPriority(priority: "high" | "medium" | "low") {
+  return priority.charAt(0).toUpperCase() + priority.slice(1);
 }
 
 function asStringArray(value: unknown): string[] {
