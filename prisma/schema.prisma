@@ -101,6 +101,7 @@ model DailyEntry {
   tomorrowItems Json     @default("[]")
   topWinsItems  Json     @default("[]")
   quoteItems    Json     @default("[]")
+  closedAt      DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

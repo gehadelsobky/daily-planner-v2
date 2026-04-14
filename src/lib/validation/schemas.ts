@@ -87,6 +87,20 @@ export const carryoverActionSchema = z
     }
   });
 
+export const closeDaySchema = z.object({
+  date: dateSchema,
+  incomplete_task_actions: z
+    .array(
+      z.object({
+        task_id: z.string().uuid(),
+        action: z.enum(["carry_to_tomorrow", "dismiss"])
+      })
+    )
+    .max(200)
+    .optional()
+    .default([])
+});
+
 export const notificationBulkSchema = z.object({
   notification_ids: z.array(z.string().uuid()).min(1).max(200)
 });

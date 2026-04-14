@@ -11,14 +11,11 @@ import { evaluateGamification } from "@/lib/gamification/evaluator";
 import { upsertXpForDay } from "@/lib/gamification/xp";
 import { SYSTEM_DEFAULT_WATER_TARGET } from "@/lib/score/constants";
 import { ensureCarryoverReminder } from "@/lib/notifications";
+import { computeDayStatus } from "@/lib/daily/day-status";
 
 const querySchema = z.object({
   date: dateSchema
 });
-
-const PAST_DAY_COMPLETION_THRESHOLD = 75;
-const REQUIRED_KEYS = new Set(["tasks", "grow", "water"]);
-const MIN_REQUIRED_SECTIONS_MET = 2;
 
 export async function GET(req: Request) {
   const auth = await requireUser();
@@ -78,25 +75,23 @@ export async function GET(req: Request) {
   await upsertXpForDay(auth.user.id, parsed.data.date, auth.user.timezone, score, milestones);
   const hasPlannedTasks = entry.tasks.length > 0;
   const allTasksCompleted = hasPlannedTasks && entry.tasks.every((t) => t.isCompleted);
-  const requiredBreakdown = score.breakdown.filter((item) => REQUIRED_KEYS.has(item.key));
-  const activeRequiredBreakdown = requiredBreakdown.filter((item) => !item.na);
-  const requiredMet = activeRequiredBreakdown.filter(
-    (item) => (item.normalizedScore ?? 0) >= 1
-  ).length;
-  const minRequiredMet = Math.min(MIN_REQUIRED_SECTIONS_MET, activeRequiredBreakdown.length);
-  const pastDayCompleted =
-    score.scorePercent >= PAST_DAY_COMPLETION_THRESHOLD && requiredMet >= minRequiredMet;
-
-  let dayStatus: "not_started" | "in_progress" | "completed" | "incomplete";
-  if (parsed.data.date < today) {
-    dayStatus = pastDayCompleted ? "completed" : "incomplete";
-  } else if (entry.tasks.length === 0 && !entry.growText && !entry.notesText) {
-    dayStatus = "not_started";
-  } else if (allTasksCompleted) {
-    dayStatus = "completed";
-  } else {
-    dayStatus = "in_progress";
-  }
+  const dayStatus = computeDayStatus({
+    selectedDate: parsed.data.date,
+    today,
+    closedAt: entry.closedAt,
+    scorePercent: score.scorePercent,
+    breakdown: score.breakdown,
+    taskCount: entry.tasks.length,
+    completedTaskCount: entry.tasks.filter((t) => t.isCompleted).length,
+    growText: entry.growText,
+    notesText: entry.notesText,
+    gratitudeCount: entry.gratitudeItems.length,
+    exerciseCount: entry.exerciseLogs.length,
+    waterConsumed: entry.waterLog?.consumed ?? 0,
+    tomorrowItemsCount: Array.isArray(entry.tomorrowItems) ? entry.tomorrowItems.length : 0,
+    topWinsCount: Array.isArray(entry.topWinsItems) ? entry.topWinsItems.length : 0,
+    quoteCount: Array.isArray(entry.quoteItems) ? entry.quoteItems.length : 0
+  });
 
   return NextResponse.json({
     entry,

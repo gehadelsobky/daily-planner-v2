@@ -56,6 +56,7 @@ const DEFAULT_DAILY_SECTION_ORDER: SectionId[] = [
 type DailyResponse = {
   entry: {
     id: string;
+    closedAt: string | null;
     growText: string | null;
     notesText: string | null;
     tomorrowItems: string[];
@@ -93,6 +94,7 @@ type DailyResponse = {
 
 type EditableSection = "task" | "gratitude" | "top_win" | "quote" | "grow";
 type ActiveEditor = { section: EditableSection; id: string; value: string } | null;
+type CloseAction = "carry_to_tomorrow" | "dismiss";
 
 function AutoSectionCard({
   title,
@@ -155,6 +157,8 @@ export function DailyPlannerClient({
   const [exerciseMinutes, setExerciseMinutes] = useState(0);
   const [carryoverDateDrafts, setCarryoverDateDrafts] = useState<Record<string, string>>({});
   const [habitValueDrafts, setHabitValueDrafts] = useState<Record<string, number>>({});
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [closeActionDrafts, setCloseActionDrafts] = useState<Record<string, CloseAction>>({});
   const [sectionOrder, setSectionOrder] = useState<SectionId[]>(
     sanitizeSectionOrder(initialLayout ?? [])
   );
@@ -430,6 +434,44 @@ export function DailyPlannerClient({
       }),
     onSuccess: refresh
   });
+  const closeDay = useMutation({
+    mutationFn: async () => {
+      await apiFetch("/api/daily-entry/upsert", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          grow_text: growText,
+          notes_text: notesText,
+          tomorrow_items: tomorrowText
+            .split("\n")
+            .map((x) => x.trim())
+            .filter(Boolean),
+          top_wins_items: topWinsItems,
+          quote_items: quoteItems
+        })
+      });
+
+      const incompleteTaskActions =
+        daily.data?.entry.tasks
+          .filter((task) => !task.isCompleted)
+          .map((task) => ({
+            task_id: task.id,
+            action: closeActionDrafts[task.id] ?? "carry_to_tomorrow"
+          })) ?? [];
+
+      return apiFetch("/api/daily-entry/close", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          incomplete_task_actions: incompleteTaskActions
+        })
+      });
+    },
+    onSuccess: async () => {
+      setIsReviewOpen(false);
+      await refresh();
+    }
+  });
 
   const score = daily.data?.score.scorePercent ?? 0;
   const selectedDateLabel = useMemo(() => {
@@ -442,6 +484,27 @@ export function DailyPlannerClient({
   }, [selectedDate]);
   const effectiveWaterTarget = daily.data?.waterDefaults?.target ?? daily.data?.entry.waterLog?.target ?? 8;
   const effectiveWaterUnit = daily.data?.waterDefaults?.unit ?? "cups";
+  const isFutureDay = Boolean(daily.data?.todayDate && selectedDate > daily.data.todayDate);
+  const incompleteTasks = daily.data?.entry.tasks.filter((task) => !task.isCompleted) ?? [];
+  const growItemsCount = growText
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean).length;
+  const reviewSummary = {
+    completedTasks: daily.data?.entry.tasks.filter((task) => task.isCompleted).length ?? 0,
+    totalTasks: daily.data?.entry.tasks.length ?? 0,
+    gratitudeCount: daily.data?.entry.gratitudeItems.length ?? 0,
+    hasGrow: growItemsCount > 0,
+    notesCount: notesText.trim() ? 1 : 0,
+    waterMet: waterConsumed >= effectiveWaterTarget,
+    exerciseCount: daily.data?.entry.exerciseLogs.length ?? 0,
+    topWinsCount: topWinsItems.length
+  };
+  const reflectionReminders = [
+    !reviewSummary.topWinsCount ? "Add at least one Top Win before closing." : null,
+    !reviewSummary.hasGrow ? "Add one Grow Daily takeaway before closing." : null,
+    !reviewSummary.gratitudeCount ? "Add one gratitude item before closing." : null
+  ].filter(Boolean) as string[];
   const sectionPresentation = (item: { points: number; maxPoints: number; na: boolean }) => {
     if (item.na || item.maxPoints <= 0) return "NA";
     const ratio = Math.max(0, Math.min(1, item.points / item.maxPoints));
@@ -470,6 +533,17 @@ export function DailyPlannerClient({
       setHabitValueDrafts(drafts);
     }
   }, [daily.data?.entry, daily.data?.habits, daily.data?.habitLogs]);
+
+  useEffect(() => {
+    const nextDrafts: Record<string, CloseAction> = {};
+    for (const task of daily.data?.entry.tasks ?? []) {
+      if (!task.isCompleted) {
+        nextDrafts[task.id] = closeActionDrafts[task.id] ?? "carry_to_tomorrow";
+      }
+    }
+    setCloseActionDrafts(nextDrafts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [daily.data?.entry.tasks]);
 
   useEffect(() => {
     if (!daily.data?.carryoverTasks?.length) {
@@ -1148,6 +1222,127 @@ export function DailyPlannerClient({
         </Button>
       </Card>
 
+      <Card className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold">End Of Day Review</h2>
+            <p className="text-sm text-muted-foreground">
+              Review unfinished tasks, save your reflections, and finalize this day.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {daily.data?.entry.closedAt ? (
+              <Badge>Closed day</Badge>
+            ) : null}
+            <Button onClick={() => setIsReviewOpen((current) => !current)} disabled={isFutureDay}>
+              {isReviewOpen ? "Hide Review" : daily.data?.entry.closedAt ? "Review Closed Day" : "Close My Day"}
+            </Button>
+          </div>
+        </div>
+        {isFutureDay ? (
+          <p className="text-sm text-muted-foreground">
+            End of day review is available for today and past days only.
+          </p>
+        ) : null}
+        {isReviewOpen ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="space-y-3">
+              <h3 className="font-semibold">Day Summary</h3>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <SummaryRow label="Daily score" value={`${score}%`} />
+                <SummaryRow
+                  label="Tasks"
+                  value={`${reviewSummary.completedTasks}/${reviewSummary.totalTasks} completed`}
+                />
+                <SummaryRow
+                  label="Water"
+                  value={
+                    reviewSummary.waterMet
+                      ? "Target met"
+                      : `${waterConsumed}/${effectiveWaterTarget} ${effectiveWaterUnit}`
+                  }
+                />
+                <SummaryRow label="Exercise logs" value={String(reviewSummary.exerciseCount)} />
+                <SummaryRow label="Gratitude items" value={String(reviewSummary.gratitudeCount)} />
+                <SummaryRow label="Top wins" value={String(reviewSummary.topWinsCount)} />
+              </div>
+              {reflectionReminders.length ? (
+                <div className="rounded-lg border border-border bg-muted/50 p-3 text-sm">
+                  <p className="mb-2 font-medium">Reflection reminders</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    {reflectionReminders.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="rounded-lg border border-border bg-muted/50 p-3 text-sm text-emerald-700">
+                  Reflection looks complete for this day.
+                </p>
+              )}
+            </Card>
+
+            <Card className="space-y-3">
+              <h3 className="font-semibold">Unfinished Tasks</h3>
+              {incompleteTasks.length ? (
+                <ul className="space-y-3">
+                  {incompleteTasks.map((task) => {
+                    const action = closeActionDrafts[task.id] ?? "carry_to_tomorrow";
+                    return (
+                      <li key={task.id} className="rounded-lg border border-border p-3">
+                        <p className="mb-2 text-sm font-medium">{task.title}</p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant={action === "carry_to_tomorrow" ? "default" : "secondary"}
+                            onClick={() =>
+                              setCloseActionDrafts((prev) => ({
+                                ...prev,
+                                [task.id]: "carry_to_tomorrow"
+                              }))
+                            }
+                          >
+                            Carry To Tomorrow
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={action === "dismiss" ? "default" : "secondary"}
+                            onClick={() =>
+                              setCloseActionDrafts((prev) => ({
+                                ...prev,
+                                [task.id]: "dismiss"
+                              }))
+                            }
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No unfinished tasks. You are ready to close the day.
+                </p>
+              )}
+            </Card>
+
+            <Card className="space-y-3 lg:col-span-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Closing the day will save your current reflection sections, process unfinished tasks,
+                  and finalize the day status.
+                </p>
+                <Button onClick={() => closeDay.mutate()} disabled={closeDay.isPending || isFutureDay}>
+                  {closeDay.isPending ? "Closing..." : "Confirm Close Day"}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        ) : null}
+      </Card>
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={sectionOrder} strategy={rectSortingStrategy}>
           <section className="grid auto-rows-fr gap-4 lg:grid-cols-3">
@@ -1226,6 +1421,15 @@ function IconActionButton({
     >
       {children}
     </button>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border px-3 py-2">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium">{value}</p>
+    </div>
   );
 }
 

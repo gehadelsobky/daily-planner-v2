@@ -1,0 +1,2 @@
+ALTER TABLE "DailyEntry"
+ADD COLUMN "closedAt" TIMESTAMP(3);
