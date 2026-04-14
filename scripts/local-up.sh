@@ -43,4 +43,21 @@ npm run check:node
 npm run build
 
 echo "[7/7] Start app on http://${APP_HOST}:${APP_PORT}"
-exec npm exec next -- start -H "${APP_HOST}" -p "${APP_PORT}"
+NEXT_BIN="$ROOT_DIR/node_modules/.bin/next"
+
+if [ -x "$NEXT_BIN" ]; then
+  exec "$NEXT_BIN" start -H "${APP_HOST}" -p "${APP_PORT}"
+fi
+
+RESOLVED_NEXT="$(node -p "require.resolve('next/dist/bin/next')" 2>/dev/null || true)"
+
+if [ -n "$RESOLVED_NEXT" ] && [ -f "$RESOLVED_NEXT" ]; then
+  exec node "$RESOLVED_NEXT" start -H "${APP_HOST}" -p "${APP_PORT}"
+fi
+
+echo "ERROR: Could not resolve a working Next.js binary"
+echo "Checked:"
+echo "  $NEXT_BIN"
+echo "  require.resolve('next/dist/bin/next')"
+echo "Run: npm install"
+exit 1
