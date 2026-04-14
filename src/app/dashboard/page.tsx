@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { apiFetch } from "@/lib/fetcher";
+import { Badge } from "@/components/ui/badge";
 
 type DashboardResponse = {
   range: "week" | "month";
@@ -64,6 +65,65 @@ export default function DashboardPage() {
   const levelProgress = data
     ? (data.gamification.currentLevelXp / data.gamification.nextLevelXp) * 100
     : 0;
+  const weeklyReview = useMemo(() => {
+    const series = data?.series ?? [];
+    if (!series.length) {
+      return {
+        strongDays: 0,
+        resetDays: 0,
+        successRate: 0,
+        momentum: "No data yet",
+        highlights: [] as string[],
+        focusAreas: [] as string[]
+      };
+    }
+
+    const strongDays = series.filter((item) => item.score >= 75).length;
+    const resetDays = series.filter((item) => item.score < 50).length;
+    const successRate = Math.round((strongDays / series.length) * 100);
+    const firstScore = series[0]?.score ?? 0;
+    const lastScore = series[series.length - 1]?.score ?? 0;
+    const trendDelta = lastScore - firstScore;
+    const momentum =
+      trendDelta >= 10
+        ? "Rising"
+        : trendDelta <= -10
+          ? "Dropping"
+          : "Stable";
+
+    const highlights = [
+      data?.stats.bestDay
+        ? `Best day was ${formatShortDate(data.stats.bestDay.date)} with ${data.stats.bestDay.score}%.`
+        : null,
+      strongDays > 0
+        ? `${strongDays} day${strongDays === 1 ? "" : "s"} reached the strong zone (75%+).`
+        : "No strong-zone days yet this week.",
+      (data?.gamification.todayXp.totalTodayXp ?? 0) > 0
+        ? `You earned ${data?.gamification.todayXp.totalTodayXp ?? 0} XP today.`
+        : "No XP earned today yet."
+    ].filter(Boolean) as string[];
+
+    const focusAreas = [
+      successRate >= 70
+        ? "You have a strong base. Focus on protecting consistency next week."
+        : "Next week should focus on consistency before intensity.",
+      resetDays >= 2
+        ? "Too many low-score days appeared. Reduce the daily load and protect the basics first."
+        : "Low-score days stayed limited. Keep using the same recovery pattern.",
+      (data?.gamification.todayXp.recurring.streaks.scoreStreakDays ?? 0) >= 3
+        ? `Your score streak is ${data?.gamification.todayXp.recurring.streaks.scoreStreakDays} days. Preserve it with a lighter but complete day plan.`
+        : "Build a new streak by planning fewer tasks and closing the core sections daily."
+    ];
+
+    return {
+      strongDays,
+      resetDays,
+      successRate,
+      momentum,
+      highlights,
+      focusAreas
+    };
+  }, [data]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
@@ -100,6 +160,46 @@ export default function DashboardPage() {
           Best day: {data?.stats.bestDay.date} ({data?.stats.bestDay.score}%)
         </p>
       </Card>
+
+      {range === "week" ? (
+        <Card className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Weekly Review</h2>
+              <p className="text-sm text-muted-foreground">
+                A quick reflection on momentum, consistency, and where to focus next.
+              </p>
+            </div>
+            <Badge>{weeklyReview.momentum} momentum</Badge>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <StatTile label="Strong Days" value={`${weeklyReview.strongDays}`} hint="75% or higher" />
+            <StatTile label="Reset Days" value={`${weeklyReview.resetDays}`} hint="Below 50%" />
+            <StatTile label="Success Rate" value={`${weeklyReview.successRate}%`} hint="Strong days this week" />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border border-border p-4">
+              <h3 className="font-medium">What went well</h3>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                {weeklyReview.highlights.map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-border p-4">
+              <h3 className="font-medium">Next week focus</h3>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                {weeklyReview.focusAreas.map((item) => (
+                  <li key={item}>• {item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="space-y-3">
         <h2 className="font-semibold">Level & XP</h2>
@@ -231,4 +331,20 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
       <span>{value}</span>
     </div>
   );
+}
+
+function StatTile({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-xl border border-border p-4">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-semibold">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
+function formatShortDate(date: string) {
+  const [, month, day] = date.split("-");
+  if (!month || !day) return date;
+  return `${day}-${month}`;
 }
