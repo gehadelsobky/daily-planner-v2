@@ -83,20 +83,38 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
   };
 
   return (
-    <header className="border-b border-border bg-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-        <Link href={loggedIn ? "/daily" : "/"} className="flex items-center gap-3 text-lg font-semibold">
+    <header className="sticky top-0 z-40 border-b border-[hsl(var(--border)/0.7)] bg-[rgba(255,255,255,0.92)] backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <Link href={loggedIn ? "/daily" : "/"} className="flex items-center gap-4 text-lg font-semibold">
           <Image src="/logo.svg" alt="Brand Logo" width={128} height={128} className="w-32 h-auto" priority />
-          <span className="text-[hsl(var(--foreground))]">Daily Planner</span>
+          <div className="flex flex-col">
+            <span className="text-[hsl(var(--foreground))]">Daily Planner</span>
+            <span className="text-xs font-medium text-[hsl(var(--muted-foreground))]">
+              Focus clearly. Finish consistently.
+            </span>
+          </div>
         </Link>
-        <nav className="flex items-center gap-3 text-sm text-[hsl(var(--foreground))]">
+        <nav className="flex flex-wrap items-center gap-2 text-sm text-[hsl(var(--foreground))]">
           {loggedIn ? (
             <>
-              <Link href="/daily" className="underline decoration-[hsl(var(--ring))] underline-offset-4">Daily</Link>
-              <span aria-hidden>|</span>
-              <Link href="/dashboard" className="underline decoration-[hsl(var(--ring))] underline-offset-4">Dashboard</Link>
-              <span aria-hidden>|</span>
-              <Link href="/settings" className="underline decoration-[hsl(var(--ring))] underline-offset-4">Settings</Link>
+              <Link
+                href="/daily"
+                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                Daily
+              </Link>
+              <Link
+                href="/dashboard"
+                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/settings"
+                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                Settings
+              </Link>
               <div className="relative">
                 <Button
                   variant="secondary"
@@ -185,9 +203,18 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
             </>
           ) : (
             <>
-              <Link href="/login" className="underline decoration-[hsl(var(--ring))] underline-offset-4">Login</Link>
-              <span aria-hidden>|</span>
-              <Link href="/register" className="underline decoration-[hsl(var(--ring))] underline-offset-4">Register</Link>
+              <Link
+                href="/login"
+                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                Register
+              </Link>
             </>
           )}
         </nav>

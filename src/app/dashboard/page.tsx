@@ -127,8 +127,28 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
-      <Card className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <Card className="overflow-hidden">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Performance Hub</p>
+              <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+            </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Review your momentum, XP growth, and consistency patterns so the next week becomes easier to plan.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Average</p>
+              <p className="mt-1 text-2xl font-semibold">{data?.stats.avgScore ?? 0}%</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Level</p>
+              <p className="mt-1 text-2xl font-semibold">{data?.gamification.level ?? 1}</p>
+            </div>
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button variant={range === "week" ? "default" : "secondary"} onClick={() => setRange("week")}>
             Week
