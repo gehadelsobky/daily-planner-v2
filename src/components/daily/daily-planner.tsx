@@ -116,9 +116,12 @@ function AutoSectionCard({
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <Card className="flex h-full flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold">{title}</h2>
+    <Card className="flex h-full flex-col gap-4 overflow-hidden">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="font-semibold tracking-tight">{title}</h2>
+          <p className="text-xs text-muted-foreground">Capture progress and keep this section current.</p>
+        </div>
         <div className="flex items-center gap-2 text-xs shrink-0">
           {dragHandle}
           <Badge>{itemCount} items</Badge>
@@ -612,6 +615,21 @@ export function DailyPlannerClient({
     if (item.points / item.maxPoints >= 0.999) return "completed";
     return "pending";
   };
+  const completionHeadline =
+    score >= 85
+      ? "Excellent rhythm today"
+      : score >= 60
+        ? "Solid progress, keep closing"
+        : "Start with one meaningful win";
+  const completionGuidance =
+    taskStats.pending > 0
+      ? `${taskStats.pending} task${taskStats.pending === 1 ? "" : "s"} still need attention.`
+      : "Your task list is fully closed for this date.";
+  const focusSummary = [
+    carryoverCount > 0 ? `${carryoverCount} carryover task${carryoverCount === 1 ? "" : "s"}` : "No carryover tasks",
+    `${reviewSummary.totalTasks} planned task${reviewSummary.totalTasks === 1 ? "" : "s"}`,
+    reviewSummary.waterMet ? "Water target met" : `Water target ${effectiveWaterTarget} ${effectiveWaterUnit}`
+  ];
 
   useEffect(() => {
     if (!daily.data?.entry) return;
@@ -1308,7 +1326,7 @@ export function DailyPlannerClient({
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-4 px-4 py-6">
+    <main className="mx-auto max-w-7xl space-y-5 px-4 py-6">
       {daily.data?.carryoverTasks?.length ? (
         <Card className="space-y-3 border-[hsl(var(--ring))]">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1396,52 +1414,101 @@ export function DailyPlannerClient({
         </Card>
       ) : null}
 
-      <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">{selectedDateLabel}</p>
-          <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, -1))}>Prev</Button>
-          <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-[170px]" />
-          <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, 1))}>Next</Button>
-          </div>
-        </div>
-        <div className="min-w-[240px] space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span>Daily Score</span>
-            <Button type="button" className="h-8 px-3 py-1 text-sm" disabled>
-              {score}%
-            </Button>
-          </div>
-          <Progress value={score} />
-          <div className="flex flex-wrap gap-1 text-xs">
-            {daily.data?.score.breakdown.map((item) => (
-              <Button
-                key={item.key}
-                type="button"
-                variant="secondary"
-                disabled
-                className={`h-8 rounded-full px-3 py-1 text-xs ${
-                  sectionState(item) === "completed"
-                    ? "bg-[#1fd9b5] text-[#0a0087] disabled:opacity-100"
-                    : sectionState(item) === "pending"
-                      ? "bg-[#5073D3] text-white disabled:opacity-100"
-                      : "bg-[#9E9E9E] text-white disabled:opacity-100"
-                }`}
-              >
-                {item.key}: {sectionPresentation(item)}
+      <Card className="overflow-hidden">
+        <div className="grid gap-5 xl:grid-cols-[1.3fr,0.9fr]">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Daily Focus</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-3xl font-semibold tracking-tight">{completionHeadline}</h1>
+                <Badge>{formatDayStatusLabel(daily.data?.dayStatus)}</Badge>
+              </div>
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                {completionGuidance} Use this day view to capture your priorities, reflection, and consistency habits in one place.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {focusSummary.map((item) => (
+                <div
+                  key={item}
+                  className="rounded-full border border-border bg-white/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-[0_6px_18px_rgba(15,23,42,0.04)]"
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, -1))}>
+                Prev
               </Button>
-            ))}
-            <Badge>Day status: {formatDayStatusLabel(daily.data?.dayStatus)}</Badge>
+              <div className="flex items-center gap-2">
+                <div className="rounded-2xl border border-border bg-white/90 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Selected day</p>
+                  <p className="mt-1 text-lg font-semibold">{selectedDateLabel}</p>
+                </div>
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-[170px]"
+                />
+              </div>
+              <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, 1))}>
+                Next
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-[1.4rem] border border-border bg-white/75 p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">Daily Score</span>
+              <Button type="button" className="h-9 px-4 py-1 text-sm" disabled>
+                {score}%
+              </Button>
+            </div>
+            <Progress value={score} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              {daily.data?.score.breakdown.map((item) => (
+                <Button
+                  key={item.key}
+                  type="button"
+                  variant="secondary"
+                  disabled
+                  className={`h-9 justify-start rounded-full px-3 py-1 text-xs ${
+                    sectionState(item) === "completed"
+                      ? "bg-[#1fd9b5] text-[#0a0087] disabled:opacity-100"
+                      : sectionState(item) === "pending"
+                        ? "bg-[#5073D3] text-white disabled:opacity-100"
+                        : "bg-[#9E9E9E] text-white disabled:opacity-100"
+                  }`}
+                >
+                  {item.key}: {sectionPresentation(item)}
+                </Button>
+              ))}
+            </div>
+            <div className="rounded-2xl border border-border bg-[rgba(0,176,255,0.04)] px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Today at a glance</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {reviewSummary.completedTasks}/{reviewSummary.totalTasks} tasks completed, {reviewSummary.gratitudeCount} gratitude
+                item{reviewSummary.gratitudeCount === 1 ? "" : "s"}, and {reviewSummary.exerciseCount} exercise log
+                {reviewSummary.exerciseCount === 1 ? "" : "s"}.
+              </p>
+            </div>
           </div>
         </div>
       </Card>
 
       <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Drag and drop sections to arrange your page, then save.
-        </p>
+        <div>
+          <p className="text-sm font-medium">Arrange your daily workspace</p>
+          <p className="text-sm text-muted-foreground">
+            Drag and drop sections to fit your natural flow, then save this layout.
+          </p>
+        </div>
         <Button onClick={() => saveLayout.mutate()} disabled={saveLayout.isPending}>
-          Save Layout
+          {saveLayout.isPending ? "Saving layout..." : "Save Layout"}
         </Button>
       </Card>
 
@@ -1643,7 +1710,7 @@ export function DailyPlannerClient({
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={sectionOrder} strategy={rectSortingStrategy}>
-          <section className="grid auto-rows-fr gap-4 lg:grid-cols-3">
+          <section className="grid auto-rows-fr gap-5 lg:grid-cols-3">
             {sectionOrder.map((id) => (
               <SortableSection key={id} id={id}>
                 {(dragHandle) => renderSection(id, dragHandle)}
