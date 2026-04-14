@@ -150,6 +150,9 @@ export function DailyPlannerClient({
   const [taskTitle, setTaskTitle] = useState("");
   const [taskPriority, setTaskPriority] = useState<"high" | "medium" | "low">("medium");
   const [taskCategory, setTaskCategory] = useState("");
+  const [taskSearch, setTaskSearch] = useState("");
+  const [taskFilter, setTaskFilter] = useState<"all" | "pending" | "completed">("all");
+  const [taskSort, setTaskSort] = useState<"manual" | "priority" | "alphabetical">("manual");
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
   const [gratefulText, setGratefulText] = useState("");
   const [growItemText, setGrowItemText] = useState("");
@@ -216,6 +219,15 @@ export function DailyPlannerClient({
       setTaskPriority("medium");
       setTaskCategory("");
     },
+    onSuccess: refresh
+  });
+
+  const moveTaskToTomorrow = useMutation({
+    mutationFn: (payload: { task_id: string }) =>
+      apiFetch("/api/tasks/move-to-tomorrow", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      }),
     onSuccess: refresh
   });
 
@@ -515,6 +527,47 @@ export function DailyPlannerClient({
   const isFutureDay = Boolean(daily.data?.todayDate && selectedDate > daily.data.todayDate);
   const isToday = daily.data?.todayDate === selectedDate;
   const incompleteTasks = daily.data?.entry.tasks.filter((task) => !task.isCompleted) ?? [];
+  const taskStats = useMemo(() => {
+    const tasks = daily.data?.entry.tasks ?? [];
+    const completed = tasks.filter((task) => task.isCompleted).length;
+    return {
+      total: tasks.length,
+      completed,
+      pending: tasks.length - completed,
+      percent: tasks.length ? Math.round((completed / tasks.length) * 100) : 0
+    };
+  }, [daily.data?.entry.tasks]);
+  const visibleTasks = useMemo(() => {
+    const tasks = [...(daily.data?.entry.tasks ?? [])];
+    const normalizedSearch = taskSearch.trim().toLowerCase();
+
+    const filtered = tasks.filter((task) => {
+      const matchesFilter =
+        taskFilter === "all" ||
+        (taskFilter === "pending" && !task.isCompleted) ||
+        (taskFilter === "completed" && task.isCompleted);
+      const matchesSearch =
+        !normalizedSearch ||
+        task.title.toLowerCase().includes(normalizedSearch) ||
+        (task.category ?? "").toLowerCase().includes(normalizedSearch) ||
+        task.priority.toLowerCase().includes(normalizedSearch);
+      return matchesFilter && matchesSearch;
+    });
+
+    if (taskSort === "priority") {
+      const rank = { high: 0, medium: 1, low: 2 } as const;
+      filtered.sort((a, b) => {
+        const priorityDiff = rank[a.priority] - rank[b.priority];
+        if (priorityDiff !== 0) return priorityDiff;
+        if (a.isCompleted !== b.isCompleted) return Number(a.isCompleted) - Number(b.isCompleted);
+        return a.title.localeCompare(b.title);
+      });
+    } else if (taskSort === "alphabetical") {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return filtered;
+  }, [daily.data?.entry.tasks, taskFilter, taskSearch, taskSort]);
   const growItemsCount = growText
     .split("\n")
     .map((x) => x.trim())
@@ -793,6 +846,46 @@ export function DailyPlannerClient({
       case "tasks":
         return (
           <AutoSectionCard title="Tasks" itemCount={daily.data?.entry.tasks.length ?? 0} {...sectionProps}>
+            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">
+                    {taskStats.completed} of {taskStats.total} tasks completed
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {taskStats.pending} pending
+                    {taskSearch.trim() ? ` • showing ${visibleTasks.length} results` : ""}
+                  </p>
+                </div>
+                <Badge>{taskStats.percent}% complete</Badge>
+              </div>
+              <Progress value={taskStats.percent} />
+              <div className="grid gap-2 lg:grid-cols-[minmax(0,1.1fr),180px,180px]">
+                <Input
+                  value={taskSearch}
+                  onChange={(e) => setTaskSearch(e.target.value)}
+                  placeholder="Search tasks, category, or priority"
+                />
+                <select
+                  value={taskFilter}
+                  onChange={(e) => setTaskFilter(e.target.value as "all" | "pending" | "completed")}
+                  className="h-10 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                >
+                  <option value="all">All tasks</option>
+                  <option value="pending">Pending only</option>
+                  <option value="completed">Completed only</option>
+                </select>
+                <select
+                  value={taskSort}
+                  onChange={(e) => setTaskSort(e.target.value as "manual" | "priority" | "alphabetical")}
+                  className="h-10 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                >
+                  <option value="manual">Original order</option>
+                  <option value="priority">Priority first</option>
+                  <option value="alphabetical">Alphabetical</option>
+                </select>
+              </div>
+            </div>
             <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr),140px,160px,auto]">
               <Input value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Add task" />
               <select
@@ -812,7 +905,7 @@ export function DailyPlannerClient({
               <Button onClick={() => addTask.mutate()}>Add</Button>
             </div>
             <ul className="space-y-1 text-sm">
-              {daily.data?.entry.tasks.map((task) => (
+              {visibleTasks.map((task) => (
                 <li key={task.id} className="group rounded-md border border-border p-2">
                   <div className="flex items-start gap-2">
                     <input
@@ -886,6 +979,12 @@ export function DailyPlannerClient({
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                      <IconActionButton
+                        label="Move task to tomorrow"
+                        onClick={() => moveTaskToTomorrow.mutate({ task_id: task.id })}
+                      >
+                        <span className="text-[11px] font-semibold">T+1</span>
+                      </IconActionButton>
                       <IconActionButton label="Edit task" onClick={() => startInlineEdit("task", task.id, task.title)}>
                         <Pencil className="h-4 w-4" />
                       </IconActionButton>
@@ -897,6 +996,13 @@ export function DailyPlannerClient({
                 </li>
               ))}
             </ul>
+            {!visibleTasks.length ? (
+              <p className="text-sm text-muted-foreground">
+                {taskStats.total
+                  ? "No tasks match the current filters."
+                  : "No tasks planned yet. Add your first task to anchor the day."}
+              </p>
+            ) : null}
           </AutoSectionCard>
         );
       case "water":
