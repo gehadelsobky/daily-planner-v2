@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/fetcher";
 
 type HabitFrequency = "daily" | "weekdays" | "custom";
@@ -222,6 +223,10 @@ export default function SettingsPage() {
     () => habits.data?.habits.filter((habit) => habit.isActive).length ?? 0,
     [habits.data]
   );
+  const watchedWeights = form.watch(["tasks", "grow", "habits", "exercise", "grateful", "water"]);
+  const totalWeights = useMemo(() => {
+    return watchedWeights.reduce((sum, value) => sum + (Number(value) || 0), 0);
+  }, [watchedWeights]);
   const timezoneOptions = useMemo(() => {
     const values =
       typeof Intl !== "undefined" && typeof Intl.supportedValuesOf === "function"
@@ -238,8 +243,50 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto max-w-4xl space-y-4 px-4 py-6">
+      <Card className="overflow-hidden">
+        <div className="grid gap-5 lg:grid-cols-[1.2fr,0.8fr]">
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Workspace Setup</p>
+              <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+            </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Configure how your planner behaves, how your score is calculated, and which habits appear in your daily system.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Badge>{activeCount} active habits</Badge>
+              <Badge>{profileWaterUnit} water tracking</Badge>
+              <Badge>{totalWeights}% total score weight</Badge>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-white/85 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Profile</p>
+              <p className="mt-1 text-sm font-medium">{profileName || "Your account"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{profileTimezone}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-white/85 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Water default</p>
+              <p className="mt-1 text-sm font-medium">
+                {profileWaterTarget === "" ? "Not set" : profileWaterTarget} {profileWaterUnit}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Used as the daily fallback target.</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <Card className="space-y-4">
-        <h1 className="text-2xl font-semibold">Score Settings</h1>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Scoring</p>
+              <h2 className="text-2xl font-semibold">Score Settings</h2>
+            </div>
+            <Badge>{totalWeights}% total</Badge>
+          </div>
+        </div>
         <p className="text-sm text-muted-foreground">
           Sum must be 100. NA components are re-normalized on each day automatically. Changes can be made once every 7 days.
         </p>
@@ -293,14 +340,24 @@ export default function SettingsPage() {
             </div>
           </label>
           <Button type="submit" className="col-span-2" disabled={saveWeights.isPending}>
-            Save weights
+            {saveWeights.isPending ? "Saving weights..." : "Save weights"}
           </Button>
         </form>
-        {weightsFeedback ? <p className="text-sm text-muted-foreground">{weightsFeedback}</p> : null}
+        {weightsFeedback ? (
+          <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 text-sm text-muted-foreground">
+            {weightsFeedback}
+          </div>
+        ) : null}
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="text-xl font-semibold">Profile Settings</h2>
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Identity & defaults</p>
+          <h2 className="text-2xl font-semibold">Profile Settings</h2>
+          <p className="text-sm text-muted-foreground">
+            These settings affect how dates, hydration, and your planning defaults behave across the app.
+          </p>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-1 text-sm">
             Name
@@ -362,65 +419,80 @@ export default function SettingsPage() {
           }}
           disabled={saveProfile.isPending}
         >
-          Save profile
+          {saveProfile.isPending ? "Saving profile..." : "Save profile"}
         </Button>
-        {profileFeedback ? <p className="text-sm text-muted-foreground">{profileFeedback}</p> : null}
+        {profileFeedback ? (
+          <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 text-sm text-muted-foreground">
+            {profileFeedback}
+          </div>
+        ) : null}
       </Card>
 
       <Card className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Habits List</h2>
-          <p className="text-sm text-muted-foreground">Active habits: {activeCount}</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Habit system</p>
+            <h2 className="text-2xl font-semibold">Habits List</h2>
+          </div>
+          <Badge>Active habits: {activeCount}</Badge>
         </div>
         <p className="text-sm text-muted-foreground">
           Manage your habits here. Active habits appear in Habit Tracker on your Dashboard and Daily page.
         </p>
 
-        <div className="grid gap-2 sm:grid-cols-4">
-          <Input
-            value={habitName}
-            onChange={(e) => setHabitName(e.target.value)}
-            placeholder="New habit name (e.g., Read 20 minutes)"
-          />
-          <select
-            value={habitFrequency}
-            onChange={(e) => {
-              const nextFrequency = e.target.value as HabitFrequency;
-              setHabitFrequency(nextFrequency);
-              if (nextFrequency === "custom" && habitCustomDays.length === 0) {
-                setHabitCustomDays([1, 2, 3, 4, 5]);
-              }
-            }}
-            className="rounded-md border border-border bg-[hsl(var(--card))] px-3 py-2 text-sm"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekdays">Weekdays</option>
-            <option value="custom">Custom</option>
-          </select>
-          <Input
-            type="number"
-            value={habitTargetValue}
-            onChange={(e) => setHabitTargetValue(e.target.value ? Number(e.target.value) : "")}
-            placeholder="Target (optional)"
-          />
-          <Input
-            value={habitTargetUnit}
-            onChange={(e) => setHabitTargetUnit(e.target.value)}
-            placeholder="Unit (e.g., min)"
-          />
-          <Button
-            onClick={() => {
-              if (!canCreateHabit) return;
-              createHabit.mutate();
-            }}
-            disabled={createHabit.isPending || !canCreateHabit}
-          >
-            Add Habit
-          </Button>
+        <div className="rounded-[1.25rem] border border-border bg-white/70 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+          <div className="mb-4">
+            <h3 className="font-semibold">Create a new habit</h3>
+            <p className="text-sm text-muted-foreground">
+              Add measurable habits when progress matters, or keep them binary for a simple done/not done flow.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-4">
+            <Input
+              value={habitName}
+              onChange={(e) => setHabitName(e.target.value)}
+              placeholder="New habit name (e.g., Read 20 minutes)"
+            />
+            <select
+              value={habitFrequency}
+              onChange={(e) => {
+                const nextFrequency = e.target.value as HabitFrequency;
+                setHabitFrequency(nextFrequency);
+                if (nextFrequency === "custom" && habitCustomDays.length === 0) {
+                  setHabitCustomDays([1, 2, 3, 4, 5]);
+                }
+              }}
+              className="rounded-xl border border-border bg-[hsl(var(--card))] px-3 py-2 text-sm"
+            >
+              <option value="daily">Daily</option>
+              <option value="weekdays">Weekdays</option>
+              <option value="custom">Custom</option>
+            </select>
+            <Input
+              type="number"
+              value={habitTargetValue}
+              onChange={(e) => setHabitTargetValue(e.target.value ? Number(e.target.value) : "")}
+              placeholder="Target (optional)"
+            />
+            <Input
+              value={habitTargetUnit}
+              onChange={(e) => setHabitTargetUnit(e.target.value)}
+              placeholder="Unit (e.g., min)"
+            />
+            <Button
+              onClick={() => {
+                if (!canCreateHabit) return;
+                createHabit.mutate();
+              }}
+              disabled={createHabit.isPending || !canCreateHabit}
+            >
+              {createHabit.isPending ? "Adding..." : "Add Habit"}
+            </Button>
+          </div>
         </div>
 
         {habitFrequency === "custom" ? (
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-[1.25rem] border border-border bg-white/70 p-4">
             <p className="text-xs text-muted-foreground">Select custom days</p>
             <div className="flex flex-wrap gap-2">
               {WEEK_DAYS.map((day) => {
@@ -446,11 +518,16 @@ export default function SettingsPage() {
             habits.data.habits.map((habit) => (
               <div
                 key={habit.id}
-                className="flex flex-col gap-2 rounded-md border border-border p-3"
+                className="flex flex-col gap-3 rounded-[1.25rem] border border-border bg-white/75 p-4 shadow-[0_8px_22px_rgba(15,23,42,0.04)]"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-medium">{habit.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium">{habit.name}</p>
+                      <Badge className={habit.isActive ? "" : "bg-[#9E9E9E] text-white shadow-none"}>
+                        {habit.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       Frequency: {habit.frequency}
                       {habit.frequency === "custom"
@@ -524,7 +601,7 @@ export default function SettingsPage() {
                           custom_days: customDays
                         });
                       }}
-                      className="rounded-md border border-border bg-[hsl(var(--card))] px-2 py-1 text-xs"
+                      className="rounded-xl border border-border bg-[hsl(var(--card))] px-2 py-1 text-xs"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekdays">Weekdays</option>
