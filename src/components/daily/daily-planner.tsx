@@ -485,6 +485,7 @@ export function DailyPlannerClient({
   const effectiveWaterTarget = daily.data?.waterDefaults?.target ?? daily.data?.entry.waterLog?.target ?? 8;
   const effectiveWaterUnit = daily.data?.waterDefaults?.unit ?? "cups";
   const isFutureDay = Boolean(daily.data?.todayDate && selectedDate > daily.data.todayDate);
+  const isToday = daily.data?.todayDate === selectedDate;
   const incompleteTasks = daily.data?.entry.tasks.filter((task) => !task.isCompleted) ?? [];
   const growItemsCount = growText
     .split("\n")
@@ -505,6 +506,21 @@ export function DailyPlannerClient({
     !reviewSummary.hasGrow ? "Add one Grow Daily takeaway before closing." : null,
     !reviewSummary.gratitudeCount ? "Add one gratitude item before closing." : null
   ].filter(Boolean) as string[];
+  const carryoverCount = daily.data?.carryoverTasks.length ?? 0;
+  const showMorningPlanningCard = isToday && daily.data?.dayStatus !== "completed";
+  const morningPrompt =
+    daily.data?.dayStatus === "not_started"
+      ? "Start with the essentials, choose what matters most, and enter the day with clarity."
+      : "You already started today. Use this quick summary to refocus before continuing.";
+  const morningChecklist = [
+    carryoverCount > 0 ? `${carryoverCount} unfinished tasks are waiting for review.` : "No carryover tasks are blocking your start.",
+    reviewSummary.totalTasks > 0
+      ? `${reviewSummary.totalTasks} tasks are already planned for today.`
+      : "No tasks planned yet. Add your first task to anchor the day.",
+    reviewSummary.waterMet
+      ? "Water target is already on track."
+      : `Water goal is ${effectiveWaterTarget} ${effectiveWaterUnit} today.`
+  ];
   const sectionPresentation = (item: { points: number; maxPoints: number; na: boolean }) => {
     if (item.na || item.maxPoints <= 0) return "NA";
     const ratio = Math.max(0, Math.min(1, item.points / item.maxPoints));
@@ -1221,6 +1237,81 @@ export function DailyPlannerClient({
           Save Layout
         </Button>
       </Card>
+
+      {showMorningPlanningCard ? (
+        <Card className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Morning Planning</p>
+                <h2 className="font-semibold">Start your day with a clear plan</h2>
+              </div>
+              <p className="max-w-3xl text-sm text-muted-foreground">{morningPrompt}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge>Carryover: {carryoverCount}</Badge>
+              <Badge>Planned tasks: {reviewSummary.totalTasks}</Badge>
+              <Badge>Day status: {formatDayStatusLabel(daily.data?.dayStatus)}</Badge>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
+            <Card className="space-y-3">
+              <h3 className="font-semibold">What matters most today?</h3>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Before jumping into all sections, start with these reminders:</p>
+                <ul className="space-y-2">
+                  {morningChecklist.map((item) => (
+                    <li key={item} className="rounded-md border border-border px-3 py-2">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Card>
+
+            <Card className="space-y-3">
+              <h3 className="font-semibold">Quick actions</h3>
+              <div className="space-y-2">
+                {carryoverCount > 0 ? (
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      carryoverAction.mutate({
+                        action: "add_today",
+                        task_ids: daily.data?.carryoverTasks.map((task) => task.id) ?? []
+                      })
+                    }
+                    disabled={carryoverAction.isPending}
+                  >
+                    Add All Carryover Tasks
+                  </Button>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => {
+                    if (!daily.data?.entry.tasks.length) {
+                      const taskInput = document.querySelector<HTMLInputElement>('input[placeholder="Add task"]');
+                      taskInput?.focus();
+                    } else {
+                      const firstIncomplete = daily.data.entry.tasks.find((task) => !task.isCompleted);
+                      if (firstIncomplete) {
+                        startInlineEdit("task", firstIncomplete.id, firstIncomplete.title);
+                      }
+                    }
+                  }}
+                >
+                  {daily.data?.entry.tasks.length ? "Refocus On First Incomplete Task" : "Add First Task"}
+                </Button>
+                <Button variant="ghost" className="w-full" onClick={() => setIsReviewOpen(true)}>
+                  Open End Of Day Review
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
