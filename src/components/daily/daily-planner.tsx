@@ -878,55 +878,60 @@ export function DailyPlannerClient({
                 <Badge>{taskStats.percent}% complete</Badge>
               </div>
               <Progress value={taskStats.percent} />
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1.1fr),180px,180px]">
+              <div className="grid grid-cols-1 gap-2">
                 <Input
-                  className="md:col-span-2 xl:col-span-1"
+                  className="min-w-0"
                   value={taskSearch}
                   onChange={(e) => setTaskSearch(e.target.value)}
                   placeholder="Search tasks, category, or priority"
                 />
-                <select
-                  value={taskFilter}
-                  onChange={(e) => setTaskFilter(e.target.value as "all" | "pending" | "completed")}
-                  className="h-10 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
-                >
-                  <option value="all">All tasks</option>
-                  <option value="pending">Pending only</option>
-                  <option value="completed">Completed only</option>
-                </select>
-                <select
-                  value={taskSort}
-                  onChange={(e) => setTaskSort(e.target.value as "manual" | "priority" | "alphabetical")}
-                  className="h-10 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
-                >
-                  <option value="manual">Original order</option>
-                  <option value="priority">Priority first</option>
-                  <option value="alphabetical">Alphabetical</option>
-                </select>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <select
+                    value={taskFilter}
+                    onChange={(e) => setTaskFilter(e.target.value as "all" | "pending" | "completed")}
+                    className="h-10 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                  >
+                    <option value="all">All tasks</option>
+                    <option value="pending">Pending only</option>
+                    <option value="completed">Completed only</option>
+                  </select>
+                  <select
+                    value={taskSort}
+                    onChange={(e) => setTaskSort(e.target.value as "manual" | "priority" | "alphabetical")}
+                    className="h-10 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                  >
+                    <option value="manual">Original order</option>
+                    <option value="priority">Priority first</option>
+                    <option value="alphabetical">Alphabetical</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr),140px,180px,auto]">
+            <div className="grid grid-cols-1 gap-2">
               <Input
-                className="md:col-span-2 xl:col-span-1"
+                className="min-w-0"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
                 placeholder="Add task"
               />
-              <select
-                value={taskPriority}
-                onChange={(e) => setTaskPriority(e.target.value as "high" | "medium" | "low")}
-                className="h-10 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
-              >
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-              <Input
-                value={taskCategory}
-                onChange={(e) => setTaskCategory(e.target.value)}
-                placeholder="Category (optional)"
-              />
-              <Button className="md:col-span-2 xl:col-span-1" onClick={() => addTask.mutate()}>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px,minmax(0,1fr)]">
+                <select
+                  value={taskPriority}
+                  onChange={(e) => setTaskPriority(e.target.value as "high" | "medium" | "low")}
+                  className="h-10 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                >
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+                <Input
+                  className="min-w-0"
+                  value={taskCategory}
+                  onChange={(e) => setTaskCategory(e.target.value)}
+                  placeholder="Category (optional)"
+                />
+              </div>
+              <Button className="w-full" onClick={() => addTask.mutate()}>
                 Add
               </Button>
             </div>
@@ -974,7 +979,7 @@ export function DailyPlannerClient({
                           </span>
                         ) : null}
                       </div>
-                      <div className="grid gap-2 md:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-2">
                         <select
                           value={task.priority}
                           onChange={(e) =>
@@ -983,7 +988,7 @@ export function DailyPlannerClient({
                               priority: e.target.value as "high" | "medium" | "low"
                             })
                           }
-                          className="h-9 rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                          className="h-9 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
                         >
                           <option value="high">High</option>
                           <option value="medium">Medium</option>
@@ -1000,7 +1005,7 @@ export function DailyPlannerClient({
                             }
                           }}
                           placeholder="Category"
-                          className="h-9"
+                          className="h-9 min-w-0"
                         />
                       </div>
                     </div>
