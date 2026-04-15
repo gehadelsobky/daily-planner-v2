@@ -7,6 +7,7 @@ import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
 import { DEFAULT_WEIGHTS } from "@/lib/score/constants";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
+import { normalizePhoneDetails } from "@/lib/phone";
 
 export async function POST(req: Request) {
   const parsed = await parseJson(req, registerSchema);
@@ -26,12 +27,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email already in use" }, { status: 409 });
   }
 
+  const phoneDetails = normalizePhoneDetails(parsed.data.phone_country, parsed.data.phone_number);
+  if (!phoneDetails) {
+    return NextResponse.json({ error: "Please enter a valid phone number" }, { status: 400 });
+  }
+
+  const existingPhone = await prisma.user.findUnique({ where: { phoneE164: phoneDetails.phoneE164 } });
+  if (existingPhone) {
+    return NextResponse.json({ error: "Phone number already in use" }, { status: 409 });
+  }
+
   const passwordHash = await hashPassword(parsed.data.password);
   const user = await prisma.user.create({
     data: {
       email: parsed.data.email.toLowerCase(),
       passwordHash,
       name: parsed.data.name,
+      phoneCountry: phoneDetails.phoneCountry,
+      phoneNumber: phoneDetails.phoneNumber,
+      phoneE164: phoneDetails.phoneE164,
       scoreSettings: {
         create: {
           effectiveFrom: new Date(),
@@ -50,6 +64,14 @@ export async function POST(req: Request) {
   await setSessionCookie(token);
 
   return NextResponse.json({
-    user: { id: user.id, email: user.email, name: user.name, timezone: user.timezone }
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      timezone: user.timezone,
+      phoneCountry: user.phoneCountry,
+      phoneNumber: user.phoneNumber,
+      phoneE164: user.phoneE164
+    }
   });
 }

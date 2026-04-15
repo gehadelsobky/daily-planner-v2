@@ -67,6 +67,9 @@ async function main() {
     where: { email: DEMO_EMAIL },
     update: {
       passwordHash,
+      phoneCountry: "US",
+      phoneNumber: "2025550182",
+      phoneE164: "+12025550182",
       timezone: "America/New_York",
       waterDefaultTarget: 8,
       waterDefaultUnit: WaterUnit.cups
@@ -75,6 +78,9 @@ async function main() {
       email: DEMO_EMAIL,
       passwordHash,
       name: "Demo User",
+      phoneCountry: "US",
+      phoneNumber: "2025550182",
+      phoneE164: "+12025550182",
       timezone: "America/New_York",
       waterDefaultTarget: 8,
       waterDefaultUnit: WaterUnit.cups

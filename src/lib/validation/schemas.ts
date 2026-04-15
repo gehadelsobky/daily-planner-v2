@@ -1,5 +1,6 @@
 import { HabitFrequency, Priority, WaterUnit } from "@prisma/client";
 import { z } from "zod";
+import { normalizePhoneDetails, isSupportedPhoneCountry } from "@/lib/phone";
 
 function isValidIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -11,11 +12,32 @@ export const dateSchema = z
   .string()
   .refine(isValidIsoDate, { message: "Invalid date format. Use YYYY-MM-DD." });
 
-export const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(128),
-  name: z.string().min(1).max(80)
-});
+export const registerSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(8).max(128),
+    name: z.string().min(1).max(80),
+    phone_country: z.string().min(2).max(2),
+    phone_number: z.string().min(4).max(30)
+  })
+  .superRefine((value, ctx) => {
+    if (!isSupportedPhoneCountry(value.phone_country)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["phone_country"],
+        message: "Unsupported country"
+      });
+      return;
+    }
+
+    if (!normalizePhoneDetails(value.phone_country, value.phone_number)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["phone_number"],
+        message: "Invalid phone number"
+      });
+    }
+  });
 
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -177,11 +199,46 @@ export const scoreSettingsUpdateSchema = z.object({
   })
 });
 
-export const profileUpdateSchema = z.object({
-  name: z.string().min(1).max(80).optional(),
-  timezone: z.string().min(1).max(80).optional(),
-  week_start_day: z.number().int().min(0).max(6).optional(),
-  water_default_target: z.number().int().min(1).max(100000).optional().nullable(),
-  water_default_unit: z.nativeEnum(WaterUnit).optional(),
-  daily_layout: z.array(z.string().min(1).max(40)).max(30).optional()
-});
+export const profileUpdateSchema = z
+  .object({
+    name: z.string().min(1).max(80).optional(),
+    timezone: z.string().min(1).max(80).optional(),
+    week_start_day: z.number().int().min(0).max(6).optional(),
+    water_default_target: z.number().int().min(1).max(100000).optional().nullable(),
+    water_default_unit: z.nativeEnum(WaterUnit).optional(),
+    daily_layout: z.array(z.string().min(1).max(40)).max(30).optional(),
+    phone_country: z.string().min(2).max(2).optional(),
+    phone_number: z.string().min(4).max(30).optional()
+  })
+  .superRefine((value, ctx) => {
+    const hasCountry = value.phone_country !== undefined;
+    const hasNumber = value.phone_number !== undefined;
+
+    if (hasCountry !== hasNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [hasCountry ? "phone_number" : "phone_country"],
+        message: "Country and phone number must be updated together"
+      });
+      return;
+    }
+
+    if (hasCountry && hasNumber) {
+      if (!isSupportedPhoneCountry(value.phone_country!)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phone_country"],
+          message: "Unsupported country"
+        });
+        return;
+      }
+
+      if (!normalizePhoneDetails(value.phone_country!, value.phone_number!)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["phone_number"],
+          message: "Invalid phone number"
+        });
+      }
+    }
+  });

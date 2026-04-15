@@ -12,7 +12,11 @@ export async function GET() {
       id: user.id,
       email: user.email,
       name: user.name,
-      timezone: user.timezone
+      timezone: user.timezone,
+      phoneCountry: user.phoneCountry,
+      phoneNumber: user.phoneNumber,
+      phoneE164: user.phoneE164,
+      avatarUrl: user.avatarUrl
     }
   });
 }

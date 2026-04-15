@@ -9,7 +9,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CountryCodeSelect } from "@/components/ui/country-code-select";
 import { apiFetch } from "@/lib/fetcher";
+import { DEFAULT_PHONE_COUNTRY, getPhoneCountryOption } from "@/lib/phone";
 
 type HabitFrequency = "daily" | "weekdays" | "custom";
 type WaterUnit = "cups" | "ml";
@@ -48,6 +50,11 @@ type HabitItem = {
 type ProfileResponse = {
   profile: {
     name: string;
+    email: string;
+    phoneCountry: string | null;
+    phoneNumber: string | null;
+    phoneE164: string | null;
+    avatarUrl: string | null;
     timezone: string;
     weekStartDay: number;
     waterDefaultTarget: number | null;
@@ -63,6 +70,9 @@ export default function SettingsPage() {
   const [profileFeedback, setProfileFeedback] = useState<string | null>(null);
 
   const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhoneCountry, setProfilePhoneCountry] = useState<string>(DEFAULT_PHONE_COUNTRY);
+  const [profilePhoneNumber, setProfilePhoneNumber] = useState("");
   const [profileTimezone, setProfileTimezone] = useState("UTC");
   const [profileWeekStartDay, setProfileWeekStartDay] = useState(1);
   const [profileWaterTarget, setProfileWaterTarget] = useState<number | "">("");
@@ -106,6 +116,9 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!profile.data?.profile) return;
     setProfileName(profile.data.profile.name ?? "");
+    setProfileEmail(profile.data.profile.email ?? "");
+    setProfilePhoneCountry(profile.data.profile.phoneCountry ?? DEFAULT_PHONE_COUNTRY);
+    setProfilePhoneNumber(profile.data.profile.phoneNumber ?? "");
     setProfileTimezone(profile.data.profile.timezone ?? "UTC");
     setProfileWeekStartDay(profile.data.profile.weekStartDay ?? 1);
     setProfileWaterTarget(profile.data.profile.waterDefaultTarget ?? "");
@@ -156,6 +169,8 @@ export default function SettingsPage() {
         method: "PATCH",
         body: JSON.stringify({
           name: profileName,
+          phone_country: profilePhoneCountry,
+          phone_number: profilePhoneNumber,
           timezone: profileTimezone,
           week_start_day: profileWeekStartDay,
           water_default_target: profileWaterTarget === "" ? null : Number(profileWaterTarget),
@@ -240,6 +255,7 @@ export default function SettingsPage() {
   }, [profileTimezone]);
 
   const canCreateHabit = habitName.trim().length > 0 && (habitFrequency !== "custom" || habitCustomDays.length > 0);
+  const selectedProfileCountry = getPhoneCountryOption(profilePhoneCountry);
 
   return (
     <main className="mx-auto max-w-4xl space-y-4 px-4 py-6">
@@ -264,14 +280,14 @@ export default function SettingsPage() {
             <div className="rounded-2xl border border-border bg-white/85 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Profile</p>
               <p className="mt-1 text-sm font-medium">{profileName || "Your account"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{profileTimezone}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{profileEmail || profileTimezone}</p>
             </div>
             <div className="rounded-2xl border border-border bg-white/85 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Water default</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Phone</p>
               <p className="mt-1 text-sm font-medium">
-                {profileWaterTarget === "" ? "Not set" : profileWaterTarget} {profileWaterUnit}
+                {profilePhoneNumber ? `${selectedProfileCountry.flag} ${selectedProfileCountry.dialCode} ${profilePhoneNumber}` : "Add your phone number"}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">Used as the daily fallback target.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Stored with country code for future verification and reminders.</p>
             </div>
           </div>
         </div>
@@ -362,6 +378,24 @@ export default function SettingsPage() {
           <label className="space-y-1 text-sm">
             Name
             <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Your name" />
+          </label>
+          <label className="space-y-1 text-sm">
+            Email
+            <Input value={profileEmail} disabled className="cursor-not-allowed opacity-70" />
+          </label>
+          <label className="space-y-1 text-sm">
+            Country code
+            <CountryCodeSelect value={profilePhoneCountry} onChange={setProfilePhoneCountry} />
+          </label>
+          <label className="space-y-1 text-sm">
+            Phone number
+            <Input
+              value={profilePhoneNumber}
+              onChange={(e) => setProfilePhoneNumber(e.target.value)}
+              placeholder={`Number without ${selectedProfileCountry.dialCode}`}
+              autoComplete="tel-national"
+              inputMode="tel"
+            />
           </label>
           <label className="space-y-1 text-sm">
             Timezone

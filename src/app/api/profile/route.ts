@@ -3,6 +3,7 @@ import { parseJson } from "@/lib/http";
 import { profileUpdateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
 import { isValidTimezone } from "@/lib/date";
+import { normalizePhoneDetails } from "@/lib/phone";
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -18,6 +19,10 @@ export async function GET() {
       id: auth.user.id,
       email: auth.user.email,
       name: auth.user.name,
+      phoneCountry: auth.user.phoneCountry,
+      phoneNumber: auth.user.phoneNumber,
+      phoneE164: auth.user.phoneE164,
+      avatarUrl: auth.user.avatarUrl,
       timezone: auth.user.timezone,
       weekStartDay: auth.user.weekStartDay,
       waterDefaultTarget: auth.user.waterDefaultTarget,
@@ -38,10 +43,36 @@ export async function PATCH(req: Request) {
     return Response.json({ error: "Invalid timezone" }, { status: 400 });
   }
 
+  const phoneDetails =
+    parsed.data.phone_country && parsed.data.phone_number
+      ? normalizePhoneDetails(parsed.data.phone_country, parsed.data.phone_number)
+      : null;
+
+  if (parsed.data.phone_country && parsed.data.phone_number && !phoneDetails) {
+    return Response.json({ error: "Invalid phone number" }, { status: 400 });
+  }
+
+  if (phoneDetails) {
+    const existingPhone = await prisma.user.findFirst({
+      where: {
+        phoneE164: phoneDetails.phoneE164,
+        id: { not: auth.user.id }
+      },
+      select: { id: true }
+    });
+
+    if (existingPhone) {
+      return Response.json({ error: "Phone number already in use" }, { status: 409 });
+    }
+  }
+
   const updated = await prisma.user.update({
     where: { id: auth.user.id },
     data: {
       name: parsed.data.name,
+      phoneCountry: phoneDetails?.phoneCountry,
+      phoneNumber: phoneDetails?.phoneNumber,
+      phoneE164: phoneDetails?.phoneE164,
       timezone: parsed.data.timezone,
       weekStartDay: parsed.data.week_start_day,
       waterDefaultTarget: parsed.data.water_default_target,
@@ -55,6 +86,10 @@ export async function PATCH(req: Request) {
       id: updated.id,
       email: updated.email,
       name: updated.name,
+      phoneCountry: updated.phoneCountry,
+      phoneNumber: updated.phoneNumber,
+      phoneE164: updated.phoneE164,
+      avatarUrl: updated.avatarUrl,
       timezone: updated.timezone,
       weekStartDay: updated.weekStartDay,
       waterDefaultTarget: updated.waterDefaultTarget,

@@ -56,6 +56,10 @@ model User {
   resetTokenExpiresAt DateTime?
   sessionVersion     Int             @default(0)
   name               String
+  phoneCountry       String?
+  phoneNumber        String?
+  phoneE164          String?         @unique
+  avatarUrl          String?
   timezone           String          @default("UTC")
   weekStartDay       Int             @default(1)
   waterDefaultTarget Int?            
