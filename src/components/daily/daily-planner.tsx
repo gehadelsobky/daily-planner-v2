@@ -183,10 +183,21 @@ export function DailyPlannerClient({
   );
 
   const queryKey = useMemo(() => ["daily", selectedDate], [selectedDate]);
+  const syncKey = useMemo(() => ["daily-sync", selectedDate], [selectedDate]);
+
+  const dailySync = useQuery({
+    queryKey: syncKey,
+    queryFn: () =>
+      apiFetch<{ ok: true }>("/api/daily-entry/sync", {
+        method: "POST",
+        body: JSON.stringify({ date: selectedDate })
+      })
+  });
 
   const daily = useQuery({
     queryKey,
-    queryFn: () => apiFetch<DailyResponse>(`/api/daily-entry?date=${selectedDate}`)
+    queryFn: () => apiFetch<DailyResponse>(`/api/daily-entry?date=${selectedDate}`),
+    enabled: dailySync.isSuccess
   });
   const profile = useQuery({
     queryKey: ["profile"],
@@ -194,7 +205,10 @@ export function DailyPlannerClient({
       apiFetch<{ profile: { dailyLayout?: string[] } }>("/api/profile")
   });
 
-  const refresh = () => qc.invalidateQueries({ queryKey });
+  const refresh = async () => {
+    await qc.invalidateQueries({ queryKey: syncKey });
+    await qc.invalidateQueries({ queryKey });
+  };
   const saveLayout = useMutation({
     mutationFn: async () =>
       apiFetch("/api/profile", {
@@ -1336,6 +1350,26 @@ export function DailyPlannerClient({
     const nextGrowText = nextGrowItems.join("\n");
     setGrowText(nextGrowText);
     saveEntrySections.mutate({ topWins: topWinsItems, quotes: quoteItems, grow: nextGrowText });
+  }
+
+  if (dailySync.isLoading || daily.isLoading) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        <Card>
+          <p className="text-sm text-muted-foreground">Loading daily planner...</p>
+        </Card>
+      </main>
+    );
+  }
+
+  if (dailySync.isError || daily.isError || !daily.data) {
+    return (
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        <Card>
+          <p className="text-sm text-red-600">Failed to load daily planner. Please refresh and try again.</p>
+        </Card>
+      </main>
+    );
   }
 
   return (

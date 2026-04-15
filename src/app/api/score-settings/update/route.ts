@@ -31,6 +31,11 @@ export async function POST(req: Request) {
   }
 
   const effectiveFrom = toDateOnlyUtc(parsed.data.effective_from, auth.user.timezone);
+  const today = toDateOnlyUtc(new Date().toISOString().slice(0, 10), auth.user.timezone);
+  if (effectiveFrom < today) {
+    return NextResponse.json({ error: "Score settings cannot take effect in the past." }, { status: 400 });
+  }
+
   const saved = await prisma.scoreSetting.upsert({
     where: {
       userId_effectiveFrom: {

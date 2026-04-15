@@ -19,6 +19,9 @@ export async function PATCH(req: Request) {
   if (!item || item.dailyEntry.userId !== auth.user.id) {
     return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
+  if (item.dailyEntry.closedAt) {
+    return NextResponse.json({ error: "This day is closed and can no longer be edited." }, { status: 409 });
+  }
 
   const updated = await prisma.gratitudeItem.update({
     where: { id: item.id },
@@ -42,6 +45,9 @@ export async function DELETE(req: Request) {
 
   if (!item || item.dailyEntry.userId !== auth.user.id) {
     return NextResponse.json({ error: "Item not found" }, { status: 404 });
+  }
+  if (item.dailyEntry.closedAt) {
+    return NextResponse.json({ error: "This day is closed and can no longer be edited." }, { status: 409 });
   }
 
   await prisma.gratitudeItem.delete({ where: { id: item.id } });

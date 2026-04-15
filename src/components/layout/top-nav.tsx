@@ -78,6 +78,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
 
   const logout = async () => {
     await apiFetch("/api/auth/logout", { method: "POST" });
+    queryClient.clear();
     router.push("/login");
     router.refresh();
   };

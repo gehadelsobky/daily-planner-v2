@@ -51,6 +51,19 @@ export async function getOrCreateDailyEntry(userId: string, dateString: string, 
   });
 }
 
+export async function getDailyEntry(userId: string, dateString: string, timezone: string) {
+  const date = toDateOnlyUtc(dateString, timezone);
+  return prisma.dailyEntry.findUnique({
+    where: { userId_date: { userId, date } },
+    include: {
+      tasks: { orderBy: { sortOrder: "asc" } },
+      gratitudeItems: { orderBy: { createdAt: "asc" } },
+      exerciseLogs: { orderBy: { createdAt: "asc" } },
+      waterLog: true
+    }
+  });
+}
+
 function habitExpectedToday(habit: { frequency: HabitFrequency; customDays: Prisma.JsonValue | null }, day: number) {
   if (habit.frequency === HabitFrequency.daily) return true;
   if (habit.frequency === HabitFrequency.weekdays) return day >= 1 && day <= 5;

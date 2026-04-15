@@ -35,7 +35,9 @@ npm run doctor
 echo "[5/6] Stop stale Next.js processes"
 pkill -f "next dev|next start|next-server" >/dev/null 2>&1 || true
 
-APP_HOST="${APP_HOST:-127.0.0.1}"
+# Bind broadly so localhost, 127.0.0.1, and deployed reverse proxies all
+# reach the same process consistently.
+APP_HOST="${APP_HOST:-0.0.0.0}"
 APP_PORT="${APP_PORT:-3000}"
 
 echo "[6/7] Build production bundle"

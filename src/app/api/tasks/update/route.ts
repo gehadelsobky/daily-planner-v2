@@ -4,12 +4,13 @@ import { requireUser } from "@/lib/auth/guard";
 import { parseJson } from "@/lib/http";
 import { updateTaskSchema } from "@/lib/validation/schemas";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { buildRateLimitKey } from "@/lib/request";
 
 export async function PATCH(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
-  if (!checkRateLimit(`task-toggle:${auth.user.id}`, 100, 60_000)) {
+  if (!(await checkRateLimit(buildRateLimitKey(["task-toggle", auth.user.id]), 100, 60_000))) {
     return NextResponse.json({ error: "Too many rapid task updates" }, { status: 429 });
   }
 
@@ -22,6 +23,9 @@ export async function PATCH(req: Request) {
   });
   if (!task || task.dailyEntry.userId !== auth.user.id) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+  if (task.dailyEntry.closedAt) {
+    return NextResponse.json({ error: "This day is closed and can no longer be edited." }, { status: 409 });
   }
 
   const updated = await prisma.task.update({

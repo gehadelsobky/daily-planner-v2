@@ -6,12 +6,13 @@ import { parseJson } from "@/lib/http";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { todayInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { carryoverActionSchema } from "@/lib/validation/schemas";
+import { buildRateLimitKey } from "@/lib/request";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
-  if (!checkRateLimit(`carryover-action:${auth.user.id}`, 60, 60_000)) {
+  if (!(await checkRateLimit(buildRateLimitKey(["carryover-action", auth.user.id]), 60, 60_000))) {
     return NextResponse.json({ error: "Too many carryover actions. Try again shortly." }, { status: 429 });
   }
 

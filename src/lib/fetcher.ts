@@ -15,22 +15,23 @@ export async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
       const error = await res
         .json()
         .catch(() => ({ error: "Request failed", details: undefined as unknown }));
-      const details = Array.isArray((error as { details?: unknown }).details)
-        ? `: ${(error as { details: unknown[] }).details.join(", ")}`
-        : "";
-      throw new Error(`${(error as { error?: string }).error ?? "Request failed"}${details}`);
+      const message = (error as { error?: string }).error ?? "Request failed";
+      if (res.status >= 500) {
+        throw new Error("A server error occurred. Please try again.");
+      }
+      throw new Error(message);
     }
 
-    const text = await res.text().catch(() => "");
-    const hint = text.trim() ? ` ${text.slice(0, 140)}` : "";
-    throw new Error(`Request failed (${res.status} ${res.statusText}).${hint}`);
+    throw new Error(
+      res.status >= 500
+        ? "A server error occurred. Please try again."
+        : `Request failed (${res.status} ${res.statusText}).`
+    );
   }
 
   const okContentType = res.headers.get("content-type") ?? "";
   if (!okContentType.includes("application/json")) {
-    const text = await res.text().catch(() => "");
-    const hint = text.trim() ? ` ${text.slice(0, 180)}` : "";
-    throw new Error(`Request succeeded but returned non-JSON content.${hint}`);
+    throw new Error("The server returned an unexpected response. Please try again.");
   }
 
   return res.json() as Promise<T>;

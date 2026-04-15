@@ -32,6 +32,7 @@ function getSecret() {
 export type SessionPayload = {
   sub: string;
   email: string;
+  ver: number;
 };
 
 export async function createSessionToken(payload: SessionPayload): Promise<string> {
@@ -56,7 +57,7 @@ export async function setSessionCookie(token: string) {
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: shouldUseSecureCookie(),
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
     maxAge: 60 * 60 * 24 * 7
   });
@@ -80,7 +81,12 @@ export async function getSessionUser() {
   }
 
   try {
-    return await prisma.user.findUnique({ where: { id: payload.sub } });
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user) return null;
+    if ((payload.ver ?? 0) !== user.sessionVersion) {
+      return null;
+    }
+    return user;
   } catch {
     // Keep the app usable when DB is temporarily unavailable.
     return null;

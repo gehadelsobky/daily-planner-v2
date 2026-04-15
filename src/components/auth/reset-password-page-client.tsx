@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,8 +27,13 @@ type ResetResponse = { message: string };
 export default function ResetPasswordPageClient() {
   const router = useRouter();
   const search = useSearchParams();
-  const token = search.get("token") ?? "";
+  const [token] = useState(() => search.get("token") ?? "");
   const hasToken = useMemo(() => token.length >= 20, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    router.replace("/reset-password", { scroll: false });
+  }, [router, token]);
 
   const form = useForm<FormValues>({ resolver: zodResolver(schema) });
   const [apiError, setApiError] = useState<string | null>(null);

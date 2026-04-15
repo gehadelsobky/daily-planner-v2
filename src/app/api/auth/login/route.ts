@@ -7,6 +7,7 @@ import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { todayInTimezone } from "@/lib/date";
 import { ensureCarryoverReminder } from "@/lib/notifications";
+import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
 
 function isJsonRequest(req: Request): boolean {
   const contentType = req.headers.get("content-type") ?? "";
@@ -61,13 +62,17 @@ async function readLoginPayload(req: Request): Promise<
 
 export async function POST(req: Request) {
   try {
-    const ip = req.headers.get("x-forwarded-for") ?? "local";
-    if (!checkRateLimit(`auth-login:${ip}`, 20, 60_000)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-    }
-
     const parsed = await readLoginPayload(req);
     if (!parsed.ok) return parsed.response;
+
+    const ip = getClientIp(req);
+    const agent = getUserAgentFingerprint(req);
+    const emailKey = parsed.data.email.trim().toLowerCase();
+    const ipAllowed = await checkRateLimit(buildRateLimitKey(["auth-login-ip", ip, agent]), 20, 60_000);
+    const identityAllowed = await checkRateLimit(buildRateLimitKey(["auth-login-account", emailKey]), 10, 60_000);
+    if (!ipAllowed || !identityAllowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
     if (!user) {
@@ -85,7 +90,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    const token = await createSessionToken({ sub: user.id, email: user.email });
+    const token = await createSessionToken({ sub: user.id, email: user.email, ver: user.sessionVersion });
     await setSessionCookie(token);
 
     // Notification reminder should never block login.

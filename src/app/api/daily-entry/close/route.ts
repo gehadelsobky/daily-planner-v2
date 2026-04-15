@@ -8,12 +8,13 @@ import { closeDaySchema } from "@/lib/validation/schemas";
 import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { computeDayStatus } from "@/lib/daily/day-status";
+import { buildRateLimitKey } from "@/lib/request";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
-  if (!checkRateLimit(`close-day:${auth.user.id}`, 20, 60_000)) {
+  if (!(await checkRateLimit(buildRateLimitKey(["close-day", auth.user.id]), 20, 60_000))) {
     return NextResponse.json({ error: "Too many close day actions. Try again shortly." }, { status: 429 });
   }
 

@@ -56,10 +56,19 @@ type DashboardResponse = {
 
 export default function DashboardPage() {
   const [range, setRange] = useState<"week" | "month">("week");
+  const sync = useQuery({
+    queryKey: ["dashboard-sync"],
+    queryFn: () =>
+      apiFetch<{ ok: true }>("/api/dashboard/sync", {
+        method: "POST",
+        body: JSON.stringify({})
+      })
+  });
 
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["dashboard", range],
-    queryFn: () => apiFetch<DashboardResponse>(`/api/dashboard?range=${range}`)
+    queryFn: () => apiFetch<DashboardResponse>(`/api/dashboard?range=${range}`),
+    enabled: sync.isSuccess
   });
 
   const levelProgress = data
@@ -159,17 +168,15 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {isLoading ? (
+      {sync.isLoading || isLoading ? (
         <Card>
           <p className="text-sm text-muted-foreground">Loading dashboard...</p>
         </Card>
       ) : null}
 
-      {isError ? (
+      {sync.isError || isError ? (
         <Card>
-          <p className="text-sm text-destructive">
-            Failed to load dashboard data: {(error as Error)?.message ?? "Unknown error"}
-          </p>
+          <p className="text-sm text-destructive">Failed to load dashboard data. Please refresh and try again.</p>
         </Card>
       ) : null}
 

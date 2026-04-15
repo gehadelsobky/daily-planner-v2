@@ -6,21 +6,24 @@ import { parseJson } from "@/lib/http";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { resetPasswordSchema } from "@/lib/validation/schemas";
 import { isForgotPasswordEnabled } from "@/lib/features";
+import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
 
 export async function POST(req: Request) {
   if (!isForgotPasswordEnabled()) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const ip = req.headers.get("x-forwarded-for") ?? "local";
-  if (!checkRateLimit(`auth-reset:${ip}`, 10, 60_000)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
-
   const parsed = await parseJson(req, resetPasswordSchema);
   if (!parsed.ok) return parsed.response;
 
+  const ip = getClientIp(req);
+  const agent = getUserAgentFingerprint(req);
   const tokenHash = createHash("sha256").update(parsed.data.token).digest("hex");
+  const ipAllowed = await checkRateLimit(buildRateLimitKey(["auth-reset-ip", ip, agent]), 10, 60_000);
+  const tokenAllowed = await checkRateLimit(buildRateLimitKey(["auth-reset-token", tokenHash]), 5, 60_000);
+  if (!ipAllowed || !tokenAllowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
   const now = new Date();
 
   const user = await prisma.user.findFirst({
@@ -40,6 +43,7 @@ export async function POST(req: Request) {
     where: { id: user.id },
     data: {
       passwordHash,
+      sessionVersion: { increment: 1 },
       resetTokenHash: null,
       resetTokenExpiresAt: null
     }

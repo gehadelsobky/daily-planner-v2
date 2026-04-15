@@ -6,8 +6,7 @@ import { requireUser } from "@/lib/auth/guard";
 import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { levelFromXp } from "@/lib/gamification";
-import { evaluateGamification } from "@/lib/gamification/evaluator";
-import { calculateDailyRecurringXpBreakdown, upsertXpForDay } from "@/lib/gamification/xp";
+import { calculateDailyRecurringXpBreakdown } from "@/lib/gamification/xp";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
@@ -27,26 +26,13 @@ export async function GET(req: Request) {
   const now = new Date();
   const today = formatDateInTimezone(now, auth.user.timezone);
   const todayUtc = toDateOnlyUtc(today, auth.user.timezone);
-  let todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone);
-  let todayRecurring = await calculateDailyRecurringXpBreakdown(
+  const todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone);
+  const todayRecurring = await calculateDailyRecurringXpBreakdown(
     auth.user.id,
     today,
     auth.user.timezone,
     todayScore
   );
-  try {
-    const milestones = await evaluateGamification(auth.user.id, today, auth.user.timezone);
-    await upsertXpForDay(auth.user.id, today, auth.user.timezone, todayScore, milestones);
-    todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone);
-    todayRecurring = await calculateDailyRecurringXpBreakdown(
-      auth.user.id,
-      today,
-      auth.user.timezone,
-      todayScore
-    );
-  } catch (error) {
-    console.error("dashboard gamification refresh failed", error);
-  }
   const series = [] as Array<{ date: string; score: number }>;
 
   for (let i = days - 1; i >= 0; i -= 1) {

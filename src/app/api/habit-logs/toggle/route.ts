@@ -5,12 +5,14 @@ import { habitToggleSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
 import { toDateOnlyUtc } from "@/lib/date";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { buildRateLimitKey } from "@/lib/request";
+import { rejectIfDayClosed } from "@/lib/daily/locks";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
 
-  if (!checkRateLimit(`habit-toggle:${auth.user.id}`, 120, 60_000)) {
+  if (!(await checkRateLimit(buildRateLimitKey(["habit-toggle", auth.user.id]), 120, 60_000))) {
     return NextResponse.json({ error: "Too many rapid updates" }, { status: 429 });
   }
 
@@ -23,6 +25,9 @@ export async function POST(req: Request) {
   }
 
   const date = toDateOnlyUtc(parsed.data.date, auth.user.timezone);
+  const closedResponse = await rejectIfDayClosed(auth.user.id, date);
+  if (closedResponse) return closedResponse;
+
   const valueDone = parsed.data.value_done;
   const computedIsDone =
     valueDone !== undefined && habit.targetValue && habit.targetValue > 0

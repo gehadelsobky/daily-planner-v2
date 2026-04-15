@@ -18,6 +18,9 @@ export async function POST(req: Request) {
   if (!task || task.dailyEntry.userId !== auth.user.id) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
+  if (task.dailyEntry.closedAt) {
+    return NextResponse.json({ error: "This day is closed and can no longer be edited." }, { status: 409 });
+  }
 
   const existing = Array.isArray(task.dailyEntry.tomorrowItems)
     ? (task.dailyEntry.tomorrowItems as unknown[]).filter((x): x is string => typeof x === "string")

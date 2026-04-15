@@ -6,15 +6,20 @@ import { hashPassword } from "@/lib/auth/password";
 import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
 import { DEFAULT_WEIGHTS } from "@/lib/score/constants";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
 
 export async function POST(req: Request) {
-  const ip = req.headers.get("x-forwarded-for") ?? "local";
-  if (!checkRateLimit(`auth-register:${ip}`, 10, 60_000)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
-
   const parsed = await parseJson(req, registerSchema);
   if (!parsed.ok) return parsed.response;
+
+  const ip = getClientIp(req);
+  const agent = getUserAgentFingerprint(req);
+  const emailKey = parsed.data.email.trim().toLowerCase();
+  const ipAllowed = await checkRateLimit(buildRateLimitKey(["auth-register-ip", ip, agent]), 10, 60_000);
+  const identityAllowed = await checkRateLimit(buildRateLimitKey(["auth-register-account", emailKey]), 5, 60_000);
+  if (!ipAllowed || !identityAllowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
   if (existing) {
@@ -41,7 +46,7 @@ export async function POST(req: Request) {
     }
   });
 
-  const token = await createSessionToken({ sub: user.id, email: user.email });
+  const token = await createSessionToken({ sub: user.id, email: user.email, ver: user.sessionVersion });
   await setSessionCookie(token);
 
   return NextResponse.json({

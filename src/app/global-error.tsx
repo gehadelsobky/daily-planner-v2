@@ -5,8 +5,6 @@ export default function GlobalError({
 }: {
   error: Error & { digest?: string };
 }) {
-  console.error(error);
-
   return (
     <html lang="en">
       <body className="min-h-screen bg-white text-slate-900">

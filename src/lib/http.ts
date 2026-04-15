@@ -7,10 +7,7 @@ export async function parseJson<T>(req: Request, schema: z.Schema<T>) {
   if (!parsed.success) {
     return {
       ok: false as const,
-      response: NextResponse.json(
-        { error: "Validation failed", issues: parsed.error.flatten() },
-        { status: 400 }
-      )
+      response: NextResponse.json({ error: "Validation failed" }, { status: 400 })
     };
   }
 
