@@ -10,6 +10,9 @@ function normalizeOrigin(value: string | null) {
 
   try {
     const url = new URL(value);
+    if (process.env.NODE_ENV !== "production" && url.hostname === "0.0.0.0") {
+      url.hostname = "localhost";
+    }
     return url.origin;
   } catch {
     return null;
@@ -32,10 +35,17 @@ function getAllowedOrigins(origin: string) {
   if (process.env.NODE_ENV !== "production") {
     if (url.hostname === "localhost") {
       allowed.add(`${url.protocol}//127.0.0.1${url.port ? `:${url.port}` : ""}`);
+      allowed.add(`${url.protocol}//0.0.0.0${url.port ? `:${url.port}` : ""}`);
     }
 
     if (url.hostname === "127.0.0.1") {
       allowed.add(`${url.protocol}//localhost${url.port ? `:${url.port}` : ""}`);
+      allowed.add(`${url.protocol}//0.0.0.0${url.port ? `:${url.port}` : ""}`);
+    }
+
+    if (url.hostname === "0.0.0.0") {
+      allowed.add(`${url.protocol}//localhost${url.port ? `:${url.port}` : ""}`);
+      allowed.add(`${url.protocol}//127.0.0.1${url.port ? `:${url.port}` : ""}`);
     }
   }
 
@@ -45,7 +55,8 @@ function getAllowedOrigins(origin: string) {
 function getRequestOrigin(req: NextRequest) {
   const forwardedProto = req.headers.get("x-forwarded-proto");
   const forwardedHost = req.headers.get("x-forwarded-host");
-  const host = forwardedHost ?? req.headers.get("host") ?? req.nextUrl.host;
+  const rawHost = forwardedHost ?? req.headers.get("host") ?? req.nextUrl.host;
+  const host = process.env.NODE_ENV !== "production" ? rawHost.replace(/^0\.0\.0\.0(?=[:]|$)/, "localhost") : rawHost;
   const protocol = forwardedProto ?? req.nextUrl.protocol.replace(/:$/, "");
 
   return `${protocol}://${host}`;

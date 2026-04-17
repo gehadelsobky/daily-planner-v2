@@ -33,6 +33,17 @@ function isDatabaseConnectivityError(error: unknown): boolean {
   );
 }
 
+function buildSafeRedirectUrl(target: string, requestUrl: string) {
+  const current = new URL(requestUrl);
+  const next = new URL(target, current);
+
+  if (next.hostname === "0.0.0.0") {
+    next.hostname = "localhost";
+  }
+
+  return next;
+}
+
 async function readLoginPayload(req: Request): Promise<
   | { ok: true; data: { email: string; password: string }; isFormRequest: boolean }
   | { ok: false; response: NextResponse }
@@ -54,7 +65,7 @@ async function readLoginPayload(req: Request): Promise<
   if (!parsed.success) {
     return {
       ok: false,
-      response: NextResponse.redirect(new URL("/login?error=invalid_input", req.url), { status: 303 })
+      response: NextResponse.redirect(buildSafeRedirectUrl("/login?error=invalid_input", req.url), { status: 303 })
     };
   }
   return { ok: true, data: parsed.data, isFormRequest: true };
@@ -77,7 +88,10 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { email: parsed.data.email.toLowerCase() } });
     if (!user) {
       if (parsed.isFormRequest) {
-        return NextResponse.redirect(new URL("/login?error=invalid_credentials", req.url), { status: 303 });
+        return NextResponse.redirect(
+          buildSafeRedirectUrl("/login?error=invalid_credentials", req.url),
+          { status: 303 }
+        );
       }
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
@@ -85,7 +99,10 @@ export async function POST(req: Request) {
     const valid = await verifyPassword(parsed.data.password, user.passwordHash);
     if (!valid) {
       if (parsed.isFormRequest) {
-        return NextResponse.redirect(new URL("/login?error=invalid_credentials", req.url), { status: 303 });
+        return NextResponse.redirect(
+          buildSafeRedirectUrl("/login?error=invalid_credentials", req.url),
+          { status: 303 }
+        );
       }
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
@@ -101,7 +118,7 @@ export async function POST(req: Request) {
     }
 
     if (parsed.isFormRequest) {
-      return NextResponse.redirect(new URL("/daily", req.url), { status: 303 });
+      return NextResponse.redirect(buildSafeRedirectUrl("/daily", req.url), { status: 303 });
     }
 
     return NextResponse.json({
@@ -113,7 +130,7 @@ export async function POST(req: Request) {
     const dbUnavailable = isDatabaseConnectivityError(error);
     if (!isJson) {
       return NextResponse.redirect(
-        new URL(`/login?error=${dbUnavailable ? "db_unavailable" : "server_error"}`, req.url),
+        buildSafeRedirectUrl(`/login?error=${dbUnavailable ? "db_unavailable" : "server_error"}`, req.url),
         { status: 303 }
       );
     }

@@ -38,10 +38,23 @@ export default function ForgotPasswordPageClient() {
   });
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4" suppressHydrationWarning>
-      <Card className="w-full space-y-4">
-        <h1 className="text-2xl font-semibold">Forgot password</h1>
-        <p className="text-sm text-slate-600">Enter your email and we will send a reset link if the account exists.</p>
+    <main className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10" suppressHydrationWarning>
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1.1fr)_460px] lg:items-center">
+        <div className="hidden lg:block space-y-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Account Recovery</p>
+          <h1 className="max-w-xl text-5xl font-semibold leading-tight tracking-tight text-[hsl(var(--foreground))]">
+            Regain access without losing your planning history.
+          </h1>
+          <p className="max-w-xl text-lg leading-8 text-muted-foreground">
+            Enter your email and we’ll prepare a secure reset flow if the account exists.
+          </p>
+        </div>
+        <Card className="w-full space-y-5">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Password Reset</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Forgot password</h1>
+          <p className="text-sm leading-6 text-muted-foreground">Enter your email and we will send a reset link if the account exists.</p>
+        </div>
         <form onSubmit={onSubmit} className="space-y-3" noValidate>
           <Input placeholder="Email" autoComplete="email" {...form.register("email")} />
           {form.formState.errors.email ? <p className="text-sm text-red-600">Please enter a valid email.</p> : null}
@@ -54,7 +67,8 @@ export default function ForgotPasswordPageClient() {
         <Link href="/login" className="text-sm underline">
           Back to login
         </Link>
-      </Card>
+        </Card>
+      </div>
     </main>
   );
 }

@@ -135,7 +135,7 @@ export default function DashboardPage() {
   }, [data]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-4 px-4 py-6">
+    <main className="mx-auto max-w-[1280px] space-y-5 px-4 py-6">
       <Card className="overflow-hidden">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
@@ -180,13 +180,28 @@ export default function DashboardPage() {
         </Card>
       ) : null}
 
-      <Card className="space-y-2">
-        <h2 className="font-semibold">Average Score</h2>
-        <p className="text-3xl font-bold">{data?.stats.avgScore ?? 0}%</p>
-        <p className="text-sm text-muted-foreground">
-          Best day: {data?.stats.bestDay.date} ({data?.stats.bestDay.score}%)
-        </p>
-      </Card>
+      <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Average Score</h2>
+              <p className="text-sm text-muted-foreground">A fast view of your current planning quality.</p>
+            </div>
+            <Badge>{range}</Badge>
+          </div>
+          <p className="text-4xl font-bold">{data?.stats.avgScore ?? 0}%</p>
+          <p className="text-sm text-muted-foreground">
+            Best day: {data?.stats.bestDay.date} ({data?.stats.bestDay.score}%)
+          </p>
+        </Card>
+
+        <Card className="space-y-3">
+          <h2 className="font-semibold">Level & XP</h2>
+          <p className="text-2xl font-semibold">Level {data?.gamification.level ?? 1}</p>
+          <Progress value={levelProgress} className="h-3" />
+          <p className="text-sm text-muted-foreground">Total XP: {data?.gamification.totalXp ?? 0}</p>
+        </Card>
+      </div>
 
       {range === "week" ? (
         <Card className="space-y-4">
@@ -227,13 +242,6 @@ export default function DashboardPage() {
           </div>
         </Card>
       ) : null}
-
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Level & XP</h2>
-        <p>Level {data?.gamification.level ?? 1}</p>
-        <Progress value={levelProgress} />
-        <p className="text-sm text-muted-foreground">Total XP: {data?.gamification.totalXp ?? 0}</p>
-      </Card>
 
       <Card className="space-y-3">
         <h2 className="font-semibold">Today XP Breakdown</h2>
@@ -288,40 +296,42 @@ export default function DashboardPage() {
         )}
       </Card>
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Badges</h2>
-        {data?.gamification.badges?.length ? (
-          <div className="flex flex-wrap gap-2">
-            {data.gamification.badges.map((badge) => (
-              <div key={`${badge.badge.name}-${badge.earnedOn}`} className="rounded-full bg-secondary px-3 py-1 text-sm">
-                {badge.badge.name}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No badges earned yet.</p>
-        )}
-      </Card>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Card className="space-y-3">
+          <h2 className="font-semibold">Badges</h2>
+          {data?.gamification.badges?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {data.gamification.badges.map((badge) => (
+                <div key={`${badge.badge.name}-${badge.earnedOn}`} className="rounded-full bg-secondary px-3 py-1 text-sm">
+                  {badge.badge.name}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No badges earned yet.</p>
+          )}
+        </Card>
 
-      <Card className="space-y-3">
-        <h2 className="font-semibold">Challenges</h2>
-        {data?.gamification.challenges?.length ? (
-          <ul className="space-y-2 text-sm">
-            {data.gamification.challenges.map((item) => (
-              <li key={`${item.challenge.name}-${item.joinedOn}`} className="rounded-md border border-border p-3">
-                <p className="font-medium">{item.challenge.name}</p>
-                <p className="text-xs text-muted-foreground">{item.challenge.description}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Ends: {item.challenge.endDate.slice(0, 10)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Progress: {formatProgress(item.progress)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">No active challenges.</p>
-        )}
-      </Card>
+        <Card className="space-y-3">
+          <h2 className="font-semibold">Challenges</h2>
+          {data?.gamification.challenges?.length ? (
+            <ul className="space-y-2 text-sm">
+              {data.gamification.challenges.map((item) => (
+                <li key={`${item.challenge.name}-${item.joinedOn}`} className="rounded-xl border border-border bg-white/80 p-3">
+                  <p className="font-medium">{item.challenge.name}</p>
+                  <p className="text-xs text-muted-foreground">{item.challenge.description}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Ends: {item.challenge.endDate.slice(0, 10)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Progress: {formatProgress(item.progress)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No active challenges.</p>
+          )}
+        </Card>
+      </div>
 
       <Card className="space-y-2">
         <h2 className="font-semibold">Score Trend</h2>

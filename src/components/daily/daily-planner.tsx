@@ -41,16 +41,34 @@ type SectionId =
   | "exercise";
 
 const DEFAULT_DAILY_SECTION_ORDER: SectionId[] = [
+  "tasks",
+  "habits",
+  "water",
+  "for_tomorrow",
+  "grow_daily",
+  "notes",
+  "exercise",
+  "gratitude",
   "top_wins",
   "quotes",
-  "gratitude",
-  "grow_daily",
-  "tasks",
-  "for_tomorrow",
-  "water",
-  "habits",
-  "notes",
-  "exercise"
+];
+
+const DAILY_LAYOUT_PRESETS: Array<{ id: string; label: string; order: SectionId[] }> = [
+  {
+    id: "balanced",
+    label: "Balanced",
+    order: ["tasks", "habits", "water", "for_tomorrow", "grow_daily", "gratitude", "notes", "top_wins", "quotes", "exercise"]
+  },
+  {
+    id: "focus",
+    label: "Focus",
+    order: ["tasks", "for_tomorrow", "notes", "habits", "water", "exercise", "grow_daily", "top_wins", "gratitude", "quotes"]
+  },
+  {
+    id: "reflection",
+    label: "Reflection",
+    order: ["tasks", "grow_daily", "notes", "gratitude", "top_wins", "quotes", "for_tomorrow", "habits", "exercise", "water"]
+  }
 ];
 
 type DailyResponse = {
@@ -101,38 +119,112 @@ type DailyResponse = {
 type EditableSection = "task" | "gratitude" | "top_win" | "quote" | "grow";
 type ActiveEditor = { section: EditableSection; id: string; value: string } | null;
 type CloseAction = "carry_to_tomorrow" | "dismiss";
+type SectionTone = "feature" | "regular" | "compact";
 
 function AutoSectionCard({
   title,
   itemCount,
   children,
-  dragHandle
+  dragHandle,
+  tone = "regular",
+  description = "Capture progress and keep this section current."
 }: {
   title: string;
   itemCount: number;
   children: ReactNode;
   dragHandle?: ReactNode;
+  tone?: SectionTone;
+  description?: string;
 }) {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <Card className="flex h-full flex-col gap-4 overflow-hidden">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-1">
-          <h2 className="font-semibold tracking-tight">{title}</h2>
-          <p className="text-xs text-muted-foreground">Capture progress and keep this section current.</p>
+    <Card
+      className={`flex flex-col self-start overflow-hidden ${
+        tone === "feature"
+          ? "gap-5 rounded-[1.6rem] border-[hsl(var(--border)/0.95)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,249,255,0.97))] p-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)]"
+          : tone === "compact"
+            ? "gap-4 rounded-[1.35rem] border-[hsl(var(--border)/0.88)] bg-white/95 p-4 shadow-[0_12px_28px_rgba(15,23,42,0.04)]"
+            : "gap-4 rounded-[1.45rem] border-[hsl(var(--border)/0.92)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,251,255,0.95))] p-5 shadow-[0_14px_32px_rgba(15,23,42,0.05)]"
+      }`}
+    >
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className={`${tone === "feature" ? "min-h-[72px]" : tone === "compact" ? "min-h-[40px]" : "min-h-[56px]"} space-y-1`}>
+            <h2 className={`${tone === "feature" ? "text-[1.15rem]" : "text-[1.02rem]"} font-semibold tracking-tight`}>
+              {title}
+            </h2>
+            {tone !== "compact" ? (
+              <p className="max-w-[34rem] text-[12px] leading-5 text-muted-foreground">{description}</p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs lg:shrink-0">
+            {dragHandle}
+            <Badge>{itemCount} items</Badge>
+            <Button variant="ghost" onClick={() => setIsOpen((v) => !v)} className="h-8 rounded-full px-3 py-1 text-xs">
+              {isOpen ? "Collapse" : "Expand"}
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs md:shrink-0">
-          {dragHandle}
-          <Badge>{itemCount} items</Badge>
-          <Button variant="ghost" onClick={() => setIsOpen((v) => !v)} className="h-8 px-3 py-1">
-            {isOpen ? "Collapse" : "Expand"}
-          </Button>
-        </div>
+        <div className="h-px bg-[linear-gradient(90deg,rgba(23,69,199,0.12),rgba(23,69,199,0.04),transparent)]" />
       </div>
       {isOpen ? children : <p className="text-sm text-muted-foreground">Section collapsed</p>}
     </Card>
   );
+}
+
+function sectionLayoutClass(id: SectionId) {
+  switch (id) {
+    default:
+      return "w-full";
+  }
+}
+
+function sectionTone(id: SectionId): SectionTone {
+  switch (id) {
+    case "tasks":
+      return "feature";
+    case "for_tomorrow":
+    case "notes":
+    case "habits":
+      return "regular";
+    case "water":
+    case "exercise":
+    case "grow_daily":
+    case "gratitude":
+    case "top_wins":
+    case "quotes":
+      return "compact";
+    default:
+      return "regular";
+  }
+}
+
+function sectionDescription(id: SectionId) {
+  switch (id) {
+    case "tasks":
+      return "Capture priorities, organize execution, and keep momentum visible.";
+    case "habits":
+      return "Track measurable consistency across your routine.";
+    case "water":
+      return "Update hydration fast.";
+    case "for_tomorrow":
+      return "Park upcoming tasks so tomorrow starts with clarity.";
+    case "notes":
+      return "Capture day context and observations.";
+    case "grow_daily":
+      return "Save one insight from the day.";
+    case "gratitude":
+      return "Capture moments worth keeping.";
+    case "top_wins":
+      return "Highlight today’s strongest outcomes.";
+    case "quotes":
+      return "Keep meaningful lines in one place.";
+    case "exercise":
+      return "Log movement quickly.";
+    default:
+      return "Capture progress and keep this section current.";
+  }
 }
 
 function formatDayStatusLabel(
@@ -157,6 +249,7 @@ export function DailyPlannerClient({
   const [taskFilter, setTaskFilter] = useState<"all" | "pending" | "completed">("all");
   const [taskSort, setTaskSort] = useState<"manual" | "priority" | "alphabetical">("manual");
   const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [gratefulText, setGratefulText] = useState("");
   const [growItemText, setGrowItemText] = useState("");
   const [topWinText, setTopWinText] = useState("");
@@ -204,6 +297,16 @@ export function DailyPlannerClient({
     queryFn: () =>
       apiFetch<{ profile: { dailyLayout?: string[] } }>("/api/profile")
   });
+  const savedSectionOrder = useMemo(
+    () => sanitizeSectionOrder(profile.data?.profile?.dailyLayout ?? initialLayout ?? []),
+    [initialLayout, profile.data?.profile?.dailyLayout]
+  );
+  const secondarySectionOrder = useMemo(
+    () => sectionOrder.filter((id) => id !== "tasks"),
+    [sectionOrder]
+  );
+  const hasUnsavedLayoutChanges = sectionOrder.join("|") !== savedSectionOrder.join("|");
+  const isDefaultLayout = sectionOrder.join("|") === DEFAULT_DAILY_SECTION_ORDER.join("|");
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: syncKey });
@@ -698,7 +801,9 @@ export function DailyPlannerClient({
 
   const renderSection = (id: SectionId, dragHandle?: ReactNode) => {
     const sectionProps = {
-      dragHandle
+      dragHandle,
+      tone: sectionTone(id),
+      description: sectionDescription(id)
     };
 
     switch (id) {
@@ -878,32 +983,44 @@ export function DailyPlannerClient({
       case "tasks":
         return (
           <AutoSectionCard title="Tasks" itemCount={daily.data?.entry.tasks.length ?? 0} {...sectionProps}>
-            <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium">
-                    {taskStats.completed} of {taskStats.total} tasks completed
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {taskStats.pending} pending
-                    {taskSearch.trim() ? ` • showing ${visibleTasks.length} results` : ""}
-                  </p>
+            <div className="rounded-[1.25rem] border border-border bg-[linear-gradient(180deg,rgba(247,251,255,0.92),rgba(255,255,255,0.96))] p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)]">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-lg font-semibold text-[hsl(var(--foreground))]">
+                      {taskStats.completed} of {taskStats.total} tasks completed
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {taskStats.pending} pending
+                      {taskSearch.trim() ? ` • showing ${visibleTasks.length} results` : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge>{taskStats.percent}% complete</Badge>
+                    <Badge>{visibleTasks.length} visible</Badge>
+                  </div>
                 </div>
-                <Badge>{taskStats.percent}% complete</Badge>
-              </div>
-              <Progress value={taskStats.percent} />
-              <div className="grid grid-cols-1 gap-2">
-                <Input
-                  className="min-w-0"
-                  value={taskSearch}
-                  onChange={(e) => setTaskSearch(e.target.value)}
-                  placeholder="Search tasks, category, or priority"
-                />
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+
+                <Progress value={taskStats.percent} />
+
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <SummaryRow label="Completed" value={String(taskStats.completed)} />
+                  <SummaryRow label="Pending" value={String(taskStats.pending)} />
+                  <SummaryRow label="Visible now" value={String(visibleTasks.length)} />
+                  <SummaryRow label="Completion" value={`${taskStats.percent}%`} />
+                </div>
+
+                <div className="grid gap-3 rounded-[1rem] border border-border bg-white/90 p-4 lg:grid-cols-[minmax(0,1.2fr)_190px_190px]">
+                  <Input
+                    className="min-w-0"
+                    value={taskSearch}
+                    onChange={(e) => setTaskSearch(e.target.value)}
+                    placeholder="Search tasks, category, or priority"
+                  />
                   <select
                     value={taskFilter}
                     onChange={(e) => setTaskFilter(e.target.value as "all" | "pending" | "completed")}
-                    className="h-10 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                    className="h-10 min-w-0 w-full rounded-xl border border-[hsl(var(--input))] bg-white px-3 text-sm"
                   >
                     <option value="all">All tasks</option>
                     <option value="pending">Pending only</option>
@@ -912,132 +1029,171 @@ export function DailyPlannerClient({
                   <select
                     value={taskSort}
                     onChange={(e) => setTaskSort(e.target.value as "manual" | "priority" | "alphabetical")}
-                    className="h-10 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                    className="h-10 min-w-0 w-full rounded-xl border border-[hsl(var(--input))] bg-white px-3 text-sm"
                   >
                     <option value="manual">Original order</option>
                     <option value="priority">Priority first</option>
                     <option value="alphabetical">Alphabetical</option>
                   </select>
                 </div>
+
+                <div className="grid gap-3 rounded-[1rem] border border-border bg-white/90 p-4 xl:grid-cols-[minmax(0,1fr)_160px_240px_130px]">
+                  <Input
+                    className="min-w-0"
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="Add task"
+                  />
+                  <select
+                    value={taskPriority}
+                    onChange={(e) => setTaskPriority(e.target.value as "high" | "medium" | "low")}
+                    className="h-10 min-w-0 w-full rounded-xl border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                  <Input
+                    className="min-w-0"
+                    value={taskCategory}
+                    onChange={(e) => setTaskCategory(e.target.value)}
+                    placeholder="Category (optional)"
+                  />
+                  <Button className="w-full" onClick={() => addTask.mutate()}>
+                    Add
+                  </Button>
+                </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              <Input
-                className="min-w-0"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
-                placeholder="Add task"
-              />
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px,minmax(0,1fr)]">
-                <select
-                  value={taskPriority}
-                  onChange={(e) => setTaskPriority(e.target.value as "high" | "medium" | "low")}
-                  className="h-10 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
-                >
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-                <Input
-                  className="min-w-0"
-                  value={taskCategory}
-                  onChange={(e) => setTaskCategory(e.target.value)}
-                  placeholder="Category (optional)"
-                />
-              </div>
-              <Button className="w-full" onClick={() => addTask.mutate()}>
-                Add
-              </Button>
-            </div>
-            <ul className="space-y-1 text-sm">
+
+            <ul className="space-y-3 text-sm">
               {visibleTasks.map((task) => (
-                <li key={task.id} className="group rounded-md border border-border p-2">
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={task.isCompleted}
-                      onChange={(e) =>
-                        toggleTask.mutate({ task_id: task.id, is_completed: e.target.checked })
-                      }
-                      className="mt-1"
-                    />
-                    <div className="min-w-0 grow space-y-2">
-                      {isEditing("task", task.id) ? (
-                        <Input
-                          autoFocus
-                          value={activeEditor?.value ?? ""}
-                          onChange={(e) => setActiveEditorValue(e.target.value)}
-                          onBlur={() => commitTaskEdit(task)}
-                          onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitTaskEdit(task))}
-                          className="h-8"
-                          disabled={updateTaskTitle.isPending}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => startInlineEdit("task", task.id, task.title)}
-                          className={`w-full text-left transition-colors hover:text-[#1745C7] ${
-                            task.isCompleted ? "line-through text-muted-foreground" : ""
-                          }`}
-                        >
-                          {task.title}
-                        </button>
-                      )}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${priorityClasses(task.priority)}`}>
-                          {capitalizeTaskPriority(task.priority)}
-                        </span>
-                        {task.category ? (
-                          <span className="rounded-full bg-[hsl(var(--muted))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))]">
-                            {task.category}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="grid grid-cols-1 gap-2">
-                        <select
-                          value={task.priority}
+                <li
+                  key={task.id}
+                  className={`group rounded-[1.15rem] border border-border bg-white/90 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition ${
+                    task.isCompleted ? "opacity-80" : ""
+                  }`}
+                >
+                  {(() => {
+                    const isExpanded = expandedTaskId === task.id || isEditing("task", task.id);
+                    return (
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={task.isCompleted}
                           onChange={(e) =>
-                            updateTaskMeta.mutate({
-                              task_id: task.id,
-                              priority: e.target.value as "high" | "medium" | "low"
-                            })
+                            toggleTask.mutate({ task_id: task.id, is_completed: e.target.checked })
                           }
-                          className="h-9 min-w-0 w-full rounded-md border border-[hsl(var(--input))] bg-white px-3 text-sm"
-                        >
-                          <option value="high">High</option>
-                          <option value="medium">Medium</option>
-                          <option value="low">Low</option>
-                        </select>
-                        <Input
-                          defaultValue={task.category ?? ""}
-                          onBlur={(e) => commitTaskCategory(task, e.currentTarget.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              commitTaskCategory(task, e.currentTarget.value);
-                              e.currentTarget.blur();
-                            }
-                          }}
-                          placeholder="Category"
-                          className="h-9 min-w-0"
+                          className="mt-1 h-5 w-5 shrink-0 rounded border-border"
                         />
+                        <div className="min-w-0 grow space-y-3">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0 grow space-y-2">
+                              {isEditing("task", task.id) ? (
+                                <Input
+                                  autoFocus
+                                  value={activeEditor?.value ?? ""}
+                                  onChange={(e) => setActiveEditorValue(e.target.value)}
+                                  onBlur={() => commitTaskEdit(task)}
+                                  onKeyDown={(e) => handleInlineEditKeyDown(e, () => commitTaskEdit(task))}
+                                  className="h-9"
+                                  disabled={updateTaskTitle.isPending}
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTaskExpanded(task.id)}
+                                  className={`w-full text-left text-base font-medium leading-7 transition-colors hover:text-[#1745C7] ${
+                                    task.isCompleted ? "line-through text-muted-foreground" : "text-[hsl(var(--foreground))]"
+                                  }`}
+                                >
+                                  {task.title}
+                                </button>
+                              )}
+
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`rounded-full px-2 py-1 text-xs font-medium ${priorityClasses(task.priority)}`}>
+                                  {capitalizeTaskPriority(task.priority)}
+                                </span>
+                                {task.category ? (
+                                  <span className="rounded-full bg-[hsl(var(--muted))] px-2 py-1 text-xs text-[hsl(var(--muted-foreground))]">
+                                    {task.category}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1 self-start opacity-100 transition lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+                              <IconActionButton
+                                label={isExpanded ? "Hide task details" : "Show task details"}
+                                onClick={() => toggleTaskExpanded(task.id)}
+                              >
+                                <span className="text-[11px] font-semibold">{isExpanded ? "−" : "+"}</span>
+                              </IconActionButton>
+                              <IconActionButton
+                                label="Move task to tomorrow"
+                                onClick={() => moveTaskToTomorrow.mutate({ task_id: task.id })}
+                              >
+                                <span className="text-[11px] font-semibold">T+1</span>
+                              </IconActionButton>
+                              <IconActionButton label="Edit task" onClick={() => startInlineEdit("task", task.id, task.title)}>
+                                <Pencil className="h-4 w-4" />
+                              </IconActionButton>
+                              <IconActionButton label="Delete task" onClick={() => deleteTask.mutate({ task_id: task.id })}>
+                                <Trash2 className="h-4 w-4" />
+                              </IconActionButton>
+                            </div>
+                          </div>
+
+                          {isExpanded ? (
+                            <div className="rounded-2xl border border-border bg-[rgba(247,251,255,0.88)] p-3">
+                              <div className="mb-2 flex items-center justify-between gap-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Task details
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedTaskId(null)}
+                                  className="text-xs font-medium text-muted-foreground transition hover:text-[#1745C7]"
+                                >
+                                  Done
+                                </button>
+                              </div>
+                              <div className="grid gap-2 sm:grid-cols-[160px,minmax(0,1fr)]">
+                                <select
+                                  value={task.priority}
+                                  onChange={(e) =>
+                                    updateTaskMeta.mutate({
+                                      task_id: task.id,
+                                      priority: e.target.value as "high" | "medium" | "low"
+                                    })
+                                  }
+                                  className="h-9 min-w-0 w-full rounded-xl border border-[hsl(var(--input))] bg-white px-3 text-sm"
+                                >
+                                  <option value="high">High</option>
+                                  <option value="medium">Medium</option>
+                                  <option value="low">Low</option>
+                                </select>
+                                <Input
+                                  defaultValue={task.category ?? ""}
+                                  onBlur={(e) => commitTaskCategory(task, e.currentTarget.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      commitTaskCategory(task, e.currentTarget.value);
+                                      e.currentTarget.blur();
+                                    }
+                                  }}
+                                  placeholder="Category"
+                                  className="h-9 min-w-0"
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                      <IconActionButton
-                        label="Move task to tomorrow"
-                        onClick={() => moveTaskToTomorrow.mutate({ task_id: task.id })}
-                      >
-                        <span className="text-[11px] font-semibold">T+1</span>
-                      </IconActionButton>
-                      <IconActionButton label="Edit task" onClick={() => startInlineEdit("task", task.id, task.title)}>
-                        <Pencil className="h-4 w-4" />
-                      </IconActionButton>
-                      <IconActionButton label="Delete task" onClick={() => deleteTask.mutate({ task_id: task.id })}>
-                        <Trash2 className="h-4 w-4" />
-                      </IconActionButton>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </li>
               ))}
             </ul>
@@ -1053,7 +1209,15 @@ export function DailyPlannerClient({
       case "water":
         return (
           <AutoSectionCard title="Water Intake" itemCount={1} {...sectionProps}>
-            <div className="flex gap-2">
+            <div className="rounded-[1.05rem] border border-border bg-[rgba(247,251,255,0.86)] p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold">Hydration progress</p>
+                  <p className="text-xs text-muted-foreground">Keep today's target visible and easy to update.</p>
+                </div>
+                <Badge>{effectiveWaterTarget} {effectiveWaterUnit}</Badge>
+              </div>
+              <div className="flex gap-2">
               <Input
                 type="number"
                 value={waterConsumed}
@@ -1061,25 +1225,35 @@ export function DailyPlannerClient({
                 placeholder={`Consumed (${effectiveWaterUnit})`}
               />
               <Button onClick={() => saveWater.mutate()}>Save</Button>
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Current: {daily.data?.entry.waterLog?.consumed ?? 0}/{effectiveWaterTarget} {effectiveWaterUnit}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Current: {daily.data?.entry.waterLog?.consumed ?? 0}/{effectiveWaterTarget}{" "}
-              {effectiveWaterUnit}
-            </p>
           </AutoSectionCard>
         );
       case "habits":
         return (
           <AutoSectionCard title="Habits" itemCount={daily.data?.habits.length ?? 0} {...sectionProps}>
             {daily.data?.habits.length ? (
-              <ul className="space-y-1 text-sm">
+              <ul className="space-y-3 text-sm">
                 {daily.data.habits.map((habit) => {
                   const log = daily.data?.habitLogs.find((h) => h.habitId === habit.id);
                   const isMeasurable = Boolean(habit.targetValue && habit.targetValue > 0);
                   return (
-                    <li key={habit.id} className="rounded-md border border-border p-2">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <span>{habit.name}</span>
+                    <li
+                      key={habit.id}
+                      className="rounded-[1.05rem] border border-border bg-white/90 p-3 shadow-[0_10px_22px_rgba(15,23,42,0.03)]"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium leading-6">{habit.name}</p>
+                          {isMeasurable ? (
+                            <p className="text-xs text-muted-foreground">
+                              Target: {habit.targetValue} {habit.targetUnit ?? ""}
+                            </p>
+                          ) : null}
+                        </div>
                         <span className="text-xs text-muted-foreground">
                           {isMeasurable
                             ? `${log?.valueDone ?? 0}/${habit.targetValue} ${habit.targetUnit ?? ""}`
@@ -1113,16 +1287,21 @@ export function DailyPlannerClient({
                           </Button>
                         </div>
                       ) : (
-                        <input
-                          type="checkbox"
-                          checked={Boolean(log?.isDone)}
-                          onChange={(e) =>
-                            toggleHabit.mutate({
-                              habit_id: habit.id,
-                              is_done: e.target.checked
-                            })
-                          }
-                        />
+                        <label className="flex items-center gap-2 rounded-xl border border-border bg-[rgba(247,251,255,0.72)] px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(log?.isDone)}
+                            onChange={(e) =>
+                              toggleHabit.mutate({
+                                habit_id: habit.id,
+                                is_done: e.target.checked
+                              })
+                            }
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {Boolean(log?.isDone) ? "Completed today" : "Mark as completed"}
+                          </span>
+                        </label>
                       )}
                     </li>
                   );
@@ -1140,20 +1319,24 @@ export function DailyPlannerClient({
             itemCount={tomorrowText.split("\n").map((x) => x.trim()).filter(Boolean).length}
             {...sectionProps}
           >
-            <Textarea
-              rows={4}
-              value={tomorrowText}
-              onChange={(e) => setTomorrowText(e.target.value)}
-              placeholder="One item per line"
-            />
-            <Button onClick={() => saveEntry.mutate()} className="w-fit">
-              Save For Tomorrow
-            </Button>
-            {daily.data?.entry.tomorrowItems?.length ? (
-              <p className="text-xs text-muted-foreground">
-                Pending auto-move items: {daily.data.entry.tomorrowItems.length}
-              </p>
-            ) : null}
+            <div className="rounded-[1.1rem] border border-border bg-white/90 p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <Textarea
+                rows={4}
+                value={tomorrowText}
+                onChange={(e) => setTomorrowText(e.target.value)}
+                placeholder="One item per line"
+              />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <Button onClick={() => saveEntry.mutate()} className="w-fit">
+                  Save For Tomorrow
+                </Button>
+                {daily.data?.entry.tomorrowItems?.length ? (
+                  <p className="text-xs text-muted-foreground">
+                    Pending auto-move items: {daily.data.entry.tomorrowItems.length}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </AutoSectionCard>
         );
       case "notes":
@@ -1177,27 +1360,29 @@ export function DailyPlannerClient({
       case "exercise":
         return (
           <AutoSectionCard title="Exercise" itemCount={daily.data?.entry.exerciseLogs.length ?? 0} {...sectionProps}>
-            <div className="flex gap-2">
-              <Input
-                value={exerciseType}
-                onChange={(e) => setExerciseType(e.target.value)}
-                placeholder="Type"
-              />
-              <Input
-                type="number"
-                value={exerciseMinutes}
-                onChange={(e) => setExerciseMinutes(Number(e.target.value))}
-                placeholder="Minutes"
-              />
-              <Button onClick={() => addExercise.mutate()}>Log</Button>
-            </div>
-            <ul className="text-sm">
+            <div className="rounded-[1.05rem] border border-border bg-[rgba(247,251,255,0.86)] p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+              <div className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_110px]">
+                <Input
+                  value={exerciseType}
+                  onChange={(e) => setExerciseType(e.target.value)}
+                  placeholder="Type"
+                />
+                <Input
+                  type="number"
+                  value={exerciseMinutes}
+                  onChange={(e) => setExerciseMinutes(Number(e.target.value))}
+                  placeholder="Minutes"
+                />
+                <Button onClick={() => addExercise.mutate()}>Log</Button>
+              </div>
+              <ul className="text-sm">
               {daily.data?.entry.exerciseLogs.map((e) => (
-                <li key={e.id}>
+                <li key={e.id} className="rounded-xl border border-border bg-white/80 px-3 py-2">
                   {e.type} - {e.minutes} min
                 </li>
               ))}
-            </ul>
+              </ul>
+            </div>
           </AutoSectionCard>
         );
       default:
@@ -1216,11 +1401,22 @@ export function DailyPlannerClient({
     });
   };
 
+  function applyLayoutPreset(order: SectionId[]) {
+    setSectionOrder(sanitizeSectionOrder(order));
+  }
+
+  function resetLayoutToDefault() {
+    setSectionOrder([...DEFAULT_DAILY_SECTION_ORDER]);
+  }
+
   function isEditing(section: EditableSection, id: string) {
     return activeEditor?.section === section && activeEditor.id === id;
   }
 
   function startInlineEdit(section: EditableSection, id: string, value: string) {
+    if (section === "task") {
+      setExpandedTaskId(id);
+    }
     setActiveEditor({ section, id, value });
   }
 
@@ -1272,6 +1468,10 @@ export function DailyPlannerClient({
       task_id: task.id,
       category: nextCategory
     });
+  }
+
+  function toggleTaskExpanded(taskId: string) {
+    setExpandedTaskId((current) => (current === taskId ? null : taskId));
   }
 
   function commitGratitudeEdit(item: { id: string; text: string }) {
@@ -1354,7 +1554,7 @@ export function DailyPlannerClient({
 
   if (dailySync.isLoading || daily.isLoading) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className="mx-auto max-w-[1600px] px-4 py-6">
         <Card>
           <p className="text-sm text-muted-foreground">Loading daily planner...</p>
         </Card>
@@ -1364,7 +1564,7 @@ export function DailyPlannerClient({
 
   if (dailySync.isError || daily.isError || !daily.data) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className="mx-auto max-w-[1600px] px-4 py-6">
         <Card>
           <p className="text-sm text-red-600">Failed to load daily planner. Please refresh and try again.</p>
         </Card>
@@ -1373,7 +1573,7 @@ export function DailyPlannerClient({
   }
 
   return (
-    <main className="mx-auto max-w-7xl space-y-5 px-4 py-6">
+    <main className="mx-auto max-w-[1600px] space-y-5 px-4 py-6">
       {daily.data?.carryoverTasks?.length ? (
         <Card className="space-y-3 border-[hsl(var(--ring))]">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1461,83 +1661,84 @@ export function DailyPlannerClient({
         </Card>
       ) : null}
 
-      <Card className="overflow-hidden">
-        <div className="grid gap-5 xl:grid-cols-[1.3fr,0.9fr]">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Daily Focus</p>
+      <Card className="overflow-hidden border-[hsl(var(--border)/0.95)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,250,255,0.95))]">
+        <div className="grid gap-6 xl:grid-cols-[1.28fr,0.92fr]">
+          <div className="space-y-5 rounded-[1.5rem] border border-[hsl(var(--border)/0.72)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(244,249,255,0.88))] p-6 shadow-[0_14px_36px_rgba(15,23,42,0.05)]">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.28em] text-muted-foreground">Daily Focus</p>
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-semibold tracking-tight">{completionHeadline}</h1>
-                <Badge>{formatDayStatusLabel(daily.data?.dayStatus)}</Badge>
+                <h1 className="text-4xl font-semibold tracking-tight text-[hsl(var(--foreground))]">{completionHeadline}</h1>
+                <Badge className="px-4 py-1.5 text-sm">{formatDayStatusLabel(daily.data?.dayStatus)}</Badge>
               </div>
-              <p className="max-w-2xl text-sm text-muted-foreground">
+              <p className="max-w-2xl text-[15px] leading-7 text-muted-foreground">
                 {completionGuidance} Use this day view to capture your priorities, reflection, and consistency habits in one place.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2.5">
               {focusSummary.map((item) => (
                 <div
                   key={item}
-                  className="rounded-full border border-border bg-white/80 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-[0_6px_18px_rgba(15,23,42,0.04)]"
+                  className="rounded-full border border-border bg-white px-3.5 py-2 text-xs font-medium text-muted-foreground shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
                 >
                   {item}
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, -1))}>
+            <div className="grid gap-3 lg:grid-cols-[120px_minmax(0,1fr)_120px]">
+              <Button variant="secondary" className="h-12 rounded-2xl" onClick={() => setSelectedDate((d) => shiftDate(d, -1))}>
                 Prev
               </Button>
-              <div className="flex items-center gap-2">
-                <div className="rounded-2xl border border-border bg-white/90 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Selected day</p>
-                  <p className="mt-1 text-lg font-semibold">{selectedDateLabel}</p>
+              <div className="grid gap-3 sm:grid-cols-[210px_minmax(170px,190px)]">
+                <div className="rounded-[1.25rem] border border-border bg-white px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Selected day</p>
+                  <p className="mt-1 text-xl font-semibold">{selectedDateLabel}</p>
                 </div>
                 <Input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-[170px]"
+                  className="h-full min-h-[54px] rounded-[1.25rem]"
                 />
               </div>
-              <Button variant="secondary" onClick={() => setSelectedDate((d) => shiftDate(d, 1))}>
+              <Button variant="secondary" className="h-12 rounded-2xl" onClick={() => setSelectedDate((d) => shiftDate(d, 1))}>
                 Next
               </Button>
             </div>
           </div>
 
-          <div className="space-y-4 rounded-[1.4rem] border border-border bg-white/75 p-4 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Daily Score</span>
-              <Button type="button" className="h-9 px-4 py-1 text-sm" disabled>
+          <div className="space-y-4 rounded-[1.5rem] border border-[hsl(var(--border)/0.74)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,249,255,0.9))] p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Daily Score</p>
+                <p className="text-xs text-muted-foreground">Live view of how today's sections are contributing.</p>
+              </div>
+              <span className="inline-flex h-11 min-w-[74px] items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#8ea2ea,#7a8ddd)] px-4 py-1 text-base font-semibold text-white shadow-[0_12px_24px_rgba(23,69,199,0.16)]">
                 {score}%
-              </Button>
+              </span>
             </div>
-            <Progress value={score} />
+            <Progress value={score} className="h-3" />
             <div className="grid gap-2 sm:grid-cols-2">
               {daily.data?.score.breakdown.map((item) => (
-                <Button
+                <div
                   key={item.key}
-                  type="button"
-                  variant="secondary"
-                  disabled
-                  className={`h-9 justify-start rounded-full px-3 py-1 text-xs ${
+                  className={`flex min-h-[42px] items-center justify-start rounded-[1rem] px-3.5 py-2 text-xs font-semibold shadow-[0_6px_18px_rgba(15,23,42,0.06)] ${
                     sectionState(item) === "completed"
-                      ? "bg-[#1fd9b5] text-[#0a0087] disabled:opacity-100"
+                      ? "bg-[#1fd9b5] text-[#0a0087]"
                       : sectionState(item) === "pending"
-                        ? "bg-[#5073D3] text-white disabled:opacity-100"
-                        : "bg-[#9E9E9E] text-white disabled:opacity-100"
+                        ? "bg-[#5073D3] text-white"
+                        : "bg-[#9E9E9E] text-white"
                   }`}
+                  aria-label={`${item.key}: ${sectionPresentation(item)}`}
                 >
                   {item.key}: {sectionPresentation(item)}
-                </Button>
+                </div>
               ))}
             </div>
-            <div className="rounded-2xl border border-border bg-[rgba(0,176,255,0.04)] px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Today at a glance</p>
-              <p className="mt-2 text-sm text-muted-foreground">
+            <div className="rounded-[1.2rem] border border-border bg-[rgba(0,176,255,0.04)] px-4 py-3.5">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Today at a glance</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {reviewSummary.completedTasks}/{reviewSummary.totalTasks} tasks completed, {reviewSummary.gratitudeCount} gratitude
                 item{reviewSummary.gratitudeCount === 1 ? "" : "s"}, and {reviewSummary.exerciseCount} exercise log
                 {reviewSummary.exerciseCount === 1 ? "" : "s"}.
@@ -1547,16 +1748,53 @@ export function DailyPlannerClient({
         </div>
       </Card>
 
-      <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium">Arrange your daily workspace</p>
-          <p className="text-sm text-muted-foreground">
-            Drag and drop sections to fit your natural flow, then save this layout.
-          </p>
+      <Card className="space-y-4 border-[hsl(var(--border)/0.92)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,250,255,0.95))]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Arrange your daily workspace</p>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Keep `Tasks` pinned at the top as your primary focus area, then drag and reorder the remaining sections below to fit your natural flow.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              className={
+                hasUnsavedLayoutChanges
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-emerald-100 text-emerald-800"
+              }
+            >
+              {saveLayout.isPending
+                ? "Saving layout..."
+                : hasUnsavedLayoutChanges
+                  ? "Unsaved changes"
+                  : "Layout saved"}
+            </Badge>
+            <Button variant="secondary" onClick={resetLayoutToDefault} disabled={isDefaultLayout}>
+              Reset Layout
+            </Button>
+            <Button
+              onClick={() => saveLayout.mutate()}
+              disabled={saveLayout.isPending || !hasUnsavedLayoutChanges}
+            >
+              {saveLayout.isPending ? "Saving layout..." : "Save Layout"}
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => saveLayout.mutate()} disabled={saveLayout.isPending}>
-          {saveLayout.isPending ? "Saving layout..." : "Save Layout"}
-        </Button>
+
+        <div className="flex flex-wrap gap-2.5">
+          {DAILY_LAYOUT_PRESETS.map((preset) => (
+            <Button
+              key={preset.id}
+              type="button"
+              variant="secondary"
+              className="rounded-full px-4"
+              onClick={() => applyLayoutPreset(preset.order)}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </div>
       </Card>
 
       {showMorningPlanningCard ? (
@@ -1755,11 +1993,15 @@ export function DailyPlannerClient({
         ) : null}
       </Card>
 
+      <section className="mb-5">
+        {renderSection("tasks")}
+      </section>
+
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={sectionOrder} strategy={rectSortingStrategy}>
-          <section className="grid auto-rows-fr gap-5 lg:grid-cols-3">
-            {sectionOrder.map((id) => (
-              <SortableSection key={id} id={id}>
+        <SortableContext items={secondarySectionOrder} strategy={rectSortingStrategy}>
+          <section className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {secondarySectionOrder.map((id) => (
+              <SortableSection key={id} id={id} className={sectionLayoutClass(id)}>
                 {(dragHandle) => renderSection(id, dragHandle)}
               </SortableSection>
             ))}
@@ -1772,10 +2014,12 @@ export function DailyPlannerClient({
 
 function SortableSection({
   id,
-  children
+  children,
+  className
 }: {
   id: SectionId;
   children: (dragHandle: ReactNode) => ReactNode;
+  className?: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id });
   const style = {
@@ -1801,7 +2045,7 @@ function SortableSection({
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-xl transition-all duration-200 ${
+      className={`w-full self-start rounded-xl transition-all duration-200 ${className ?? ""} ${
         isDragging
           ? "z-10 scale-[0.99] opacity-75 shadow-md ring-2 ring-[hsl(var(--ring))]"
           : isOver
@@ -1886,7 +2130,8 @@ function sanitizeSectionOrder(layout: string[]): SectionId[] {
     preferred.push(sectionId);
   }
   const missing = DEFAULT_DAILY_SECTION_ORDER.filter((item) => !preferred.includes(item));
-  return [...preferred, ...missing];
+  const merged = [...preferred, ...missing].filter((item) => item !== "tasks");
+  return ["tasks", ...merged];
 }
 
 function shiftDate(date: string, byDays: number): string {

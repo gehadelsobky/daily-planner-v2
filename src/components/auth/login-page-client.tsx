@@ -21,9 +21,25 @@ export default function LoginPageClient({ forgotEnabled }: { forgotEnabled: bool
         : null;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4" suppressHydrationWarning>
-      <Card className="w-full space-y-4">
-        <h1 className="text-2xl font-semibold">Login</h1>
+    <main className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10" suppressHydrationWarning>
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1.1fr)_460px] lg:items-center">
+        <div className="hidden lg:block">
+          <div className="space-y-5">
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Welcome Back</p>
+            <h1 className="max-w-xl text-5xl font-semibold leading-tight tracking-tight text-[hsl(var(--foreground))]">
+              Return to your daily system with clarity and momentum.
+            </h1>
+            <p className="max-w-xl text-lg leading-8 text-muted-foreground">
+              Review priorities, maintain your habits, and keep your productivity score moving in the right direction.
+            </p>
+          </div>
+        </div>
+        <Card className="w-full space-y-5">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Account Access</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Login</h1>
+          <p className="text-sm leading-6 text-muted-foreground">Use your email and password to continue into the planner.</p>
+        </div>
         <form method="POST" action="/api/auth/login" className="space-y-3">
           <Input name="email" type="email" placeholder="Email" autoComplete="email" required />
           <Input
@@ -51,7 +67,8 @@ export default function LoginPageClient({ forgotEnabled }: { forgotEnabled: bool
             Create an account
           </Link>
         </div>
-      </Card>
+        </Card>
+      </div>
     </main>
   );
 }

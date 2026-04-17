@@ -65,14 +65,27 @@ export default function ResetPasswordPageClient() {
   });
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4" suppressHydrationWarning>
-      <Card className="w-full space-y-4">
-        <h1 className="text-2xl font-semibold">Reset password</h1>
+    <main className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10" suppressHydrationWarning>
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1.1fr)_460px] lg:items-center">
+        <div className="hidden lg:block space-y-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Secure Recovery</p>
+          <h1 className="max-w-xl text-5xl font-semibold leading-tight tracking-tight text-[hsl(var(--foreground))]">
+            Set a new password and return to your planner with confidence.
+          </h1>
+          <p className="max-w-xl text-lg leading-8 text-muted-foreground">
+            This step refreshes access while keeping the rest of your account and daily history intact.
+          </p>
+        </div>
+        <Card className="w-full space-y-5">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">New Password</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Reset password</h1>
         {!hasToken ? (
           <p className="text-sm text-red-600">Reset link is missing or invalid. Request a new one.</p>
         ) : (
-          <p className="text-sm text-slate-600">Enter your new password.</p>
+          <p className="text-sm leading-6 text-muted-foreground">Enter your new password.</p>
         )}
+        </div>
         <form onSubmit={onSubmit} className="space-y-3" noValidate>
           <Input type="password" placeholder="New password" autoComplete="new-password" {...form.register("password")} />
           {form.formState.errors.password ? (
@@ -96,7 +109,8 @@ export default function ResetPasswordPageClient() {
         <Link href="/login" className="text-sm underline">
           Back to login
         </Link>
-      </Card>
+        </Card>
+      </div>
     </main>
   );
 }

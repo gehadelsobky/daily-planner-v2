@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Bell } from "lucide-react";
@@ -12,6 +12,7 @@ import { apiFetch } from "@/lib/fetcher";
 
 export function TopNav({ loggedIn }: { loggedIn: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -85,7 +86,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-[hsl(var(--border)/0.7)] bg-[rgba(255,255,255,0.92)] backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
         <Link href={loggedIn ? "/daily" : "/"} className="flex items-center gap-4 text-lg font-semibold">
           <Image src="/logo.svg" alt="Brand Logo" width={128} height={128} className="w-32 h-auto" priority />
           <div className="flex flex-col">
@@ -100,19 +101,19 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
             <>
               <Link
                 href="/daily"
-                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/daily" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
               >
                 Daily
               </Link>
               <Link
                 href="/dashboard"
-                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/dashboard" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
               >
                 Dashboard
               </Link>
               <Link
                 href="/settings"
-                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/settings" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
               >
                 Settings
               </Link>
@@ -131,7 +132,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
                   ) : null}
                 </Button>
                 {isOpen ? (
-                  <div className="absolute right-0 z-30 mt-2 w-[360px] rounded-xl border border-border bg-white p-3 shadow-lg">
+                  <div className="absolute right-0 z-30 mt-2 w-[380px] rounded-[1.25rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,251,255,0.96))] p-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)]">
                     <div className="mb-2 flex items-center justify-between">
                       <p className="font-semibold">Notifications</p>
                       {(notificationsQuery.data?.unreadCount ?? 0) > 0 ? (
@@ -153,7 +154,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
                     <div className="max-h-[380px] space-y-2 overflow-auto">
                       {visibleNotifications.length ? (
                         visibleNotifications.map((notification) => (
-                          <div key={notification.id} className="rounded-md border border-border p-2">
+                          <div key={notification.id} className="rounded-xl border border-border bg-white/90 p-3">
                             <div className="mb-1 flex items-center justify-between gap-2">
                               <p className="text-sm font-medium">{notification.title}</p>
                               {notification.status === "unread" ? <Badge>new</Badge> : null}

@@ -7,4 +7,4 @@ cd "$ROOT_DIR"
 LOG_DIR="$HOME/Library/Logs/daily-planner-v2"
 mkdir -p "$LOG_DIR"
 
-exec "$ROOT_DIR/scripts/local-up.sh" >>"$LOG_DIR/stdout.log" 2>>"$LOG_DIR/stderr.log"
+exec "$ROOT_DIR/scripts/runtime-boot.sh" >>"$LOG_DIR/stdout.log" 2>>"$LOG_DIR/stderr.log"

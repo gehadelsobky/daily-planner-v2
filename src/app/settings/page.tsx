@@ -256,17 +256,26 @@ export default function SettingsPage() {
 
   const canCreateHabit = habitName.trim().length > 0 && (habitFrequency !== "custom" || habitCustomDays.length > 0);
   const selectedProfileCountry = getPhoneCountryOption(profilePhoneCountry);
+  const profileInitials = (profileName || "Your Account")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  const phoneDisplay = profilePhoneNumber
+    ? `${selectedProfileCountry.flag} ${selectedProfileCountry.dialCode} ${profilePhoneNumber}`
+    : "No phone added yet";
 
   return (
-    <main className="mx-auto max-w-4xl space-y-4 px-4 py-6">
+    <main className="mx-auto max-w-[1280px] space-y-5 px-4 py-6">
       <Card className="overflow-hidden">
-        <div className="grid gap-5 lg:grid-cols-[1.2fr,0.8fr]">
-          <div className="space-y-3">
+        <div className="space-y-6">
+          <div className="space-y-4">
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Workspace Setup</p>
-              <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+              <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Settings</h1>
             </div>
-            <p className="max-w-2xl text-sm text-muted-foreground">
+            <p className="max-w-2xl text-base leading-8 text-muted-foreground">
               Configure how your planner behaves, how your score is calculated, and which habits appear in your daily system.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -276,18 +285,67 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-white/85 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Profile</p>
-              <p className="mt-1 text-sm font-medium">{profileName || "Your account"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{profileEmail || profileTimezone}</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-white/85 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Phone</p>
-              <p className="mt-1 text-sm font-medium">
-                {profilePhoneNumber ? `${selectedProfileCountry.flag} ${selectedProfileCountry.dialCode} ${profilePhoneNumber}` : "Add your phone number"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">Stored with country code for future verification and reminders.</p>
+          <div className="rounded-[1.75rem] border border-border bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,250,255,0.92))] p-5 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr),minmax(0,1.4fr)] lg:items-start">
+              <div className="flex items-start gap-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#1745C7,#00b0ff)] text-lg font-semibold text-white shadow-[0_10px_24px_rgba(23,69,199,0.22)]">
+                  {profileInitials || "DP"}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Account Snapshot</p>
+                  <p className="mt-1 text-xl font-semibold text-[hsl(var(--foreground))]">
+                    {profileName || "Your account"}
+                  </p>
+                  <p className="mt-1 truncate text-sm text-muted-foreground" title={profileEmail || ""}>
+                    {profileEmail || "No email available"}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge className="bg-white/85 text-foreground shadow-none">
+                      {selectedProfileCountry.flag} {selectedProfileCountry.dialCode}
+                    </Badge>
+                    <Badge className="bg-white/85 text-foreground shadow-none">{profileTimezone}</Badge>
+                    <Badge className="bg-white/85 text-foreground shadow-none">
+                      Starts {WEEK_DAYS.find((day) => day.value === profileWeekStartDay)?.label ?? "Mon"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Phone</p>
+                  <p className="mt-1 text-base font-semibold text-[hsl(var(--foreground))]">{phoneDisplay}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Stored with country code for reminders and account verification.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Country</p>
+                  <p className="mt-1 text-base font-semibold text-[hsl(var(--foreground))]">
+                    {selectedProfileCountry.flag} {selectedProfileCountry.name}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">Dial code {selectedProfileCountry.dialCode}</p>
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3 sm:col-span-2 xl:col-span-1">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Planner Defaults</p>
+                  <div className="mt-2 space-y-2 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Week start</span>
+                      <span className="font-medium">
+                        {WEEK_DAYS.find((day) => day.value === profileWeekStartDay)?.label ?? "Mon"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Water</span>
+                      <span className="font-medium">
+                        {profileWaterTarget === "" ? "Not set" : `${profileWaterTarget} ${profileWaterUnit}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -402,7 +460,7 @@ export default function SettingsPage() {
             <select
               value={profileTimezone}
               onChange={(e) => setProfileTimezone(e.target.value)}
-              className="h-10 w-full rounded-md border border-border bg-[hsl(var(--card))] px-3 py-2 text-sm"
+              className="h-11 w-full rounded-xl border border-border bg-[rgba(255,255,255,0.94)] px-4 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
             >
               {timezoneOptions.map((tz) => (
                 <option key={tz} value={tz}>
@@ -416,7 +474,7 @@ export default function SettingsPage() {
             <select
               value={profileWeekStartDay}
               onChange={(e) => setProfileWeekStartDay(Number(e.target.value))}
-              className="h-10 w-full rounded-md border border-border bg-[hsl(var(--card))] px-3 py-2 text-sm"
+              className="h-11 w-full rounded-xl border border-border bg-[rgba(255,255,255,0.94)] px-4 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
             >
               {WEEK_DAYS.map((d) => (
                 <option key={d.value} value={d.value}>
@@ -439,7 +497,7 @@ export default function SettingsPage() {
             <select
               value={profileWaterUnit}
               onChange={(e) => setProfileWaterUnit(e.target.value as WaterUnit)}
-              className="h-10 w-full rounded-md border border-border bg-[hsl(var(--card))] px-3 py-2 text-sm"
+              className="h-11 w-full rounded-xl border border-border bg-[rgba(255,255,255,0.94)] px-4 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
             >
               <option value="cups">cups</option>
               <option value="ml">ml</option>
@@ -496,7 +554,7 @@ export default function SettingsPage() {
                   setHabitCustomDays([1, 2, 3, 4, 5]);
                 }
               }}
-              className="rounded-xl border border-border bg-[hsl(var(--card))] px-3 py-2 text-sm"
+              className="rounded-xl border border-border bg-[rgba(255,255,255,0.94)] px-3 py-2 text-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
             >
               <option value="daily">Daily</option>
               <option value="weekdays">Weekdays</option>
@@ -635,7 +693,7 @@ export default function SettingsPage() {
                           custom_days: customDays
                         });
                       }}
-                      className="rounded-xl border border-border bg-[hsl(var(--card))] px-2 py-1 text-xs"
+                      className="rounded-xl border border-border bg-[rgba(255,255,255,0.94)] px-2 py-1 text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekdays">Weekdays</option>

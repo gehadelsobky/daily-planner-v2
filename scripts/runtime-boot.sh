@@ -8,44 +8,36 @@ if [ -d "$HOME/.nvm/versions/node/v20.20.0/bin" ]; then
   export PATH="$HOME/.nvm/versions/node/v20.20.0/bin:$PATH"
 fi
 
-echo "[1/6] Node check"
+APP_HOST="${APP_HOST:-127.0.0.1}"
+APP_PORT="${APP_PORT:-3000}"
+
+echo "[runtime] Node check"
 npm run check:node
 
-echo "[2/6] Ensure PostgreSQL is reachable on localhost:5432"
+echo "[runtime] Ensure PostgreSQL is reachable"
 if ! /Applications/Postgres.app/Contents/Versions/17/bin/psql postgresql://postgres:postgres@localhost:5432/postgres -c "select 1" >/dev/null 2>&1; then
-  echo "PostgreSQL not reachable, trying to start Postgres.app cluster..."
+  echo "[runtime] PostgreSQL not reachable. Retrying start..."
   /Applications/Postgres.app/Contents/Versions/17/bin/pg_ctl -D "$HOME/.postgresapp-data17" -l /tmp/postgres.log start >/dev/null 2>&1 || true
   sleep 2
 fi
 
 if ! /Applications/Postgres.app/Contents/Versions/17/bin/psql postgresql://postgres:postgres@localhost:5432/postgres -c "select 1" >/dev/null 2>&1; then
-  echo "ERROR: PostgreSQL is still not reachable at localhost:5432"
-  echo "Start Postgres.app manually, then rerun: npm run local:up"
+  echo "[runtime] PostgreSQL is still unavailable at localhost:5432"
   exit 1
 fi
 
-echo "[3/6] Prisma generate/migrate/seed"
+echo "[runtime] Prisma generate/deploy"
 npm run prisma:generate
 npm run prisma:deploy
-npm run prisma:seed
 
-echo "[4/6] Runtime doctor"
-npm run doctor
+if [ ! -f ".next/BUILD_ID" ]; then
+  echo "[runtime] No production build found. Building once..."
+  npm run build
+else
+  echo "[runtime] Existing production build found. Skipping rebuild."
+fi
 
-echo "[5/6] Stop stale Next.js processes"
-pkill -f "next dev|next start|next-server" >/dev/null 2>&1 || true
-
-# Default local runtime to 127.0.0.1 so redirects and browser-opened URLs stay
-# on a user-facing local address. Public/deployed runtimes can still override
-# this with APP_HOST.
-APP_HOST="${APP_HOST:-127.0.0.1}"
-APP_PORT="${APP_PORT:-3000}"
-
-echo "[6/7] Build production bundle"
-npm run check:node
-npm run build
-
-echo "[7/7] Start app on http://${APP_HOST}:${APP_PORT}"
+echo "[runtime] Start app on http://${APP_HOST}:${APP_PORT}"
 NEXT_BIN="$ROOT_DIR/node_modules/.bin/next"
 
 if [ -x "$NEXT_BIN" ]; then
@@ -58,9 +50,5 @@ if [ -n "$RESOLVED_NEXT" ] && [ -f "$RESOLVED_NEXT" ]; then
   exec node "$RESOLVED_NEXT" start -H "${APP_HOST}" -p "${APP_PORT}"
 fi
 
-echo "ERROR: Could not resolve a working Next.js binary"
-echo "Checked:"
-echo "  $NEXT_BIN"
-echo "  require.resolve('next/dist/bin/next')"
-echo "Run: npm install"
+echo "[runtime] ERROR: Could not resolve a working Next.js binary"
 exit 1

@@ -62,9 +62,23 @@ export default function RegisterPageClient() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4" suppressHydrationWarning>
-      <Card className="w-full space-y-4">
-        <h1 className="text-2xl font-semibold">Create account</h1>
+    <main className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10" suppressHydrationWarning>
+      <div className="grid w-full gap-8 lg:grid-cols-[minmax(0,1.1fr)_500px] lg:items-center">
+        <div className="hidden lg:block space-y-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">New Workspace</p>
+          <h1 className="max-w-xl text-5xl font-semibold leading-tight tracking-tight text-[hsl(var(--foreground))]">
+            Create your account and shape a planner that supports real consistency.
+          </h1>
+          <p className="max-w-xl text-lg leading-8 text-muted-foreground">
+            Set your daily rhythm, track progress clearly, and turn planning into a system you can keep using.
+          </p>
+        </div>
+        <Card className="w-full space-y-5">
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Create Profile</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Create account</h1>
+          <p className="text-sm leading-6 text-muted-foreground">We’ll use these details to personalize your planner setup.</p>
+        </div>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-3" noValidate>
           <Input placeholder="Name" autoComplete="name" {...form.register("name")} />
           {form.formState.errors.name ? (
@@ -108,7 +122,8 @@ export default function RegisterPageClient() {
         <a href="/login" className="text-sm underline">
           Already have an account
         </a>
-      </Card>
+        </Card>
+      </div>
     </main>
   );
 }
