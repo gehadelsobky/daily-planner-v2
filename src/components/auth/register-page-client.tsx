@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -32,7 +33,7 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-export default function RegisterPageClient() {
+export default function RegisterPageClient({ forgotEnabled }: { forgotEnabled: boolean }) {
   const router = useRouter();
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -119,9 +120,18 @@ export default function RegisterPageClient() {
             Register
           </Button>
         </form>
-        <a href="/login" className="text-sm underline">
-          Already have an account
-        </a>
+        <div className="flex items-center justify-between gap-3 text-sm">
+          {forgotEnabled ? (
+            <Link href="/forgot-password" className="underline">
+              Forgot password?
+            </Link>
+          ) : (
+            <span />
+          )}
+          <Link href="/login" className="underline">
+            Already have an account
+          </Link>
+        </div>
         </Card>
       </div>
     </main>
