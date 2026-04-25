@@ -128,8 +128,16 @@ This resets local development data and re-seeds demo data.
 - `AUTH_SECRET`: JWT signing secret
 - `CRON_SECRET`: secret header value for cron endpoint
 - `NODE_ENV`: `development`/`production`
+- `APP_URL`: the public app origin, for example `https://planner.example.com`
 - `ENABLE_FORGOT_PASSWORD`: `false` by default in v2 (set `true` to enable forgot/reset password routes)
 - `COOKIE_SECURE`: set `false` for local HTTP; set `true` for HTTPS deployments
+- `EMAIL_FROM`: sender used for password reset emails
+- `EMAIL_APP_NAME`: app name shown in reset emails
+- `SMTP_HOST`: SMTP server host
+- `SMTP_PORT`: SMTP server port, usually `587` or `465`
+- `SMTP_USER`: SMTP username
+- `SMTP_PASS`: SMTP password
+- `SMTP_SECURE`: `true` for implicit TLS, usually with port `465`
 
 ## Health endpoint
 

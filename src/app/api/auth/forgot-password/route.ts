@@ -6,10 +6,22 @@ import { prisma } from "@/lib/db";
 import { createHash, randomBytes } from "crypto";
 import { isForgotPasswordEnabled } from "@/lib/features";
 import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
+import { resolveAppUrl } from "@/lib/app-url";
+import { isPasswordResetEmailConfigured, sendPasswordResetEmail } from "@/lib/email/password-reset";
 
 export async function POST(req: Request) {
   if (!isForgotPasswordEnabled()) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const appUrl = resolveAppUrl(req);
+  if (!appUrl) {
+    return NextResponse.json({ error: "Application URL is not configured" }, { status: 500 });
+  }
+
+  const emailConfigured = isPasswordResetEmailConfigured();
+  if (process.env.NODE_ENV === "production" && !emailConfigured) {
+    return NextResponse.json({ error: "Password reset is temporarily unavailable" }, { status: 503 });
   }
 
   const parsed = await parseJson(req, forgotPasswordSchema);
@@ -42,11 +54,29 @@ export async function POST(req: Request) {
       }
     });
 
-    if (process.env.NODE_ENV !== "production") {
-      const appOrigin = req.headers.get("origin") ?? "http://localhost:3000";
-      const devResetUrl = `${appOrigin}/reset-password?token=${token}`;
+    const resetUrl = `${appUrl}/reset-password?token=${token}`;
+
+    if (!emailConfigured) {
       // Helpful local signal when email provider is not configured.
-      console.log(`[DEV] Password reset link for ${user.email}: ${devResetUrl}`);
+      console.log(`[DEV] Password reset link for ${user.email}: ${resetUrl}`);
+    } else {
+      try {
+        await sendPasswordResetEmail({
+          to: user.email,
+          resetUrl
+        });
+      } catch (error) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            resetTokenHash: null,
+            resetTokenExpiresAt: null
+          }
+        });
+
+        console.error("Failed to send password reset email", error);
+        return NextResponse.json({ error: "Password reset is temporarily unavailable" }, { status: 503 });
+      }
     }
   }
 
