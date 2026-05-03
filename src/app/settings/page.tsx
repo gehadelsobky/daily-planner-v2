@@ -83,8 +83,11 @@ export default function SettingsPage() {
   const [habitCustomDays, setHabitCustomDays] = useState<number[]>([1, 2, 3, 4, 5]);
   const [habitTargetValue, setHabitTargetValue] = useState<number | "">("");
   const [habitTargetUnit, setHabitTargetUnit] = useState("");
+  const [habitEditNames, setHabitEditNames] = useState<Record<string, string>>({});
   const [habitEditTargets, setHabitEditTargets] = useState<Record<string, { value: number | ""; unit: string }>>({});
   const [habitEditCustomDays, setHabitEditCustomDays] = useState<Record<string, number[]>>({});
+  const [habitEditingId, setHabitEditingId] = useState<string | null>(null);
+  const [habitDeleteConfirmId, setHabitDeleteConfirmId] = useState<string | null>(null);
 
   const settings = useQuery({
     queryKey: ["score-settings"],
@@ -130,8 +133,10 @@ export default function SettingsPage() {
 
     const nextTargets: Record<string, { value: number | ""; unit: string }> = {};
     const nextCustomDays: Record<string, number[]> = {};
+    const nextNames: Record<string, string> = {};
 
     for (const habit of habits.data.habits) {
+      nextNames[habit.id] = habit.name;
       nextTargets[habit.id] = {
         value: habit.targetValue ?? "",
         unit: habit.targetUnit ?? ""
@@ -139,6 +144,7 @@ export default function SettingsPage() {
       nextCustomDays[habit.id] = Array.isArray(habit.customDays) ? [...habit.customDays].sort((a, b) => a - b) : [];
     }
 
+    setHabitEditNames(nextNames);
     setHabitEditTargets(nextTargets);
     setHabitEditCustomDays(nextCustomDays);
   }, [habits.data]);
@@ -216,6 +222,7 @@ export default function SettingsPage() {
   const updateHabit = useMutation({
     mutationFn: (payload: {
       habit_id: string;
+      name?: string;
       is_active?: boolean;
       frequency?: HabitFrequency;
       custom_days?: number[] | null;
@@ -227,6 +234,21 @@ export default function SettingsPage() {
         body: JSON.stringify(payload)
       }),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["habits-settings-list"] });
+      await queryClient.invalidateQueries({ queryKey: ["daily"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard-habits"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    }
+  });
+
+  const deleteHabit = useMutation({
+    mutationFn: (habitId: string) =>
+      apiFetch("/api/habits/delete", {
+        method: "DELETE",
+        body: JSON.stringify({ habit_id: habitId })
+      }),
+    onSuccess: async () => {
+      setHabitDeleteConfirmId(null);
       await queryClient.invalidateQueries({ queryKey: ["habits-settings-list"] });
       await queryClient.invalidateQueries({ queryKey: ["daily"] });
       await queryClient.invalidateQueries({ queryKey: ["dashboard-habits"] });
@@ -265,6 +287,23 @@ export default function SettingsPage() {
   const phoneDisplay = profilePhoneNumber
     ? `${selectedProfileCountry.flag} ${selectedProfileCountry.dialCode} ${profilePhoneNumber}`
     : "No phone added yet";
+
+  const saveHabitName = (habitId: string) => {
+    const nextName = (habitEditNames[habitId] ?? "").trim();
+    if (!nextName) return;
+
+    updateHabit.mutate(
+      {
+        habit_id: habitId,
+        name: nextName
+      },
+      {
+        onSuccess: () => {
+          setHabitEditingId(null);
+        }
+      }
+    );
+  };
 
   return (
     <main className="mx-auto max-w-[1280px] space-y-5 px-4 py-6">
@@ -615,7 +654,67 @@ export default function SettingsPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">{habit.name}</p>
+                      {habitEditingId === habit.id ? (
+                        <>
+                          <Input
+                            className="h-9 min-w-[220px] sm:w-[260px]"
+                            value={habitEditNames[habit.id] ?? ""}
+                            onChange={(e) =>
+                              setHabitEditNames((prev) => ({
+                                ...prev,
+                                [habit.id]: e.target.value
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                saveHabitName(habit.id);
+                              }
+                              if (e.key === "Escape") {
+                                setHabitEditNames((prev) => ({
+                                  ...prev,
+                                  [habit.id]: habit.name
+                                }));
+                                setHabitEditingId(null);
+                              }
+                            }}
+                            placeholder="Habit name"
+                          />
+                          <Button
+                            variant="secondary"
+                            className="h-9 px-3"
+                            onClick={() => saveHabitName(habit.id)}
+                            disabled={updateHabit.isPending || !(habitEditNames[habit.id] ?? "").trim()}
+                          >
+                            Save name
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="h-9 px-3"
+                            onClick={() => {
+                              setHabitEditNames((prev) => ({
+                                ...prev,
+                                [habit.id]: habit.name
+                              }));
+                              setHabitEditingId(null);
+                            }}
+                            disabled={updateHabit.isPending}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium">{habit.name}</p>
+                          <Button
+                            variant="ghost"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => setHabitEditingId(habit.id)}
+                          >
+                            Edit name
+                          </Button>
+                        </>
+                      )}
                       <Badge className={habit.isActive ? "" : "bg-[#9E9E9E] text-white shadow-none"}>
                         {habit.isActive ? "Active" : "Inactive"}
                       </Badge>
@@ -710,6 +809,31 @@ export default function SettingsPage() {
                     >
                       {habit.isActive ? "Disable" : "Enable"}
                     </Button>
+                    {habitDeleteConfirmId === habit.id ? (
+                      <>
+                        <Button
+                          variant="danger"
+                          onClick={() => deleteHabit.mutate(habit.id)}
+                          disabled={deleteHabit.isPending}
+                        >
+                          {deleteHabit.isPending ? "Deleting..." : "Confirm delete"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setHabitDeleteConfirmId(null)}
+                          disabled={deleteHabit.isPending}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        onClick={() => setHabitDeleteConfirmId(habit.id)}
+                      >
+                        Delete
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       onClick={() =>
@@ -762,6 +886,12 @@ export default function SettingsPage() {
                       Save days
                     </Button>
                   </div>
+                ) : null}
+
+                {habitDeleteConfirmId === habit.id ? (
+                  <p className="text-xs text-red-600">
+                    Deleting this habit also removes its tracking history. This action cannot be undone.
+                  </p>
                 ) : null}
               </div>
             ))

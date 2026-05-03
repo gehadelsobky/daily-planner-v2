@@ -150,6 +150,10 @@ export const habitUpdateSchema = z.object({
   is_active: z.boolean().optional()
 });
 
+export const habitDeleteSchema = z.object({
+  habit_id: z.string().uuid()
+});
+
 export const habitToggleSchema = z.object({
   habit_id: z.string().uuid(),
   date: dateSchema,
