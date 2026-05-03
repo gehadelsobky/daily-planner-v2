@@ -9,6 +9,16 @@ import { todayInTimezone } from "@/lib/date";
 import { ensureCarryoverReminder } from "@/lib/notifications";
 import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
 
+function getAppUrl(req: Request): string {
+  return (
+    process.env.APP_URL ||
+    process.env.AUTH_URL ||
+    process.env.NEXTAUTH_URL ||
+    req.headers.get("origin") ||
+    "https://planner.gehadelsobky.com"
+  );
+}
+
 function isJsonRequest(req: Request): boolean {
   const contentType = req.headers.get("content-type") ?? "";
   const accept = req.headers.get("accept") ?? "";
@@ -118,7 +128,7 @@ export async function POST(req: Request) {
     }
 
     if (parsed.isFormRequest) {
-      return NextResponse.redirect(buildSafeRedirectUrl("/daily", req.url), { status: 303 });
+      return NextResponse.redirect(new URL("/daily", getAppUrl(req)), { status: 303 });
     }
 
     return NextResponse.json({
