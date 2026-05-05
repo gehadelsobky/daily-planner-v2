@@ -48,35 +48,137 @@ enum NotificationStatus {
   dismissed
 }
 
-model User {
-  id                 String          @id @default(uuid())
-  email              String          @unique
-  passwordHash       String
-  resetTokenHash     String?
-  resetTokenExpiresAt DateTime?
-  sessionVersion     Int             @default(0)
-  name               String
-  phoneCountry       String?
-  phoneNumber        String?
-  phoneE164          String?         @unique
-  avatarUrl          String?
-  timezone           String          @default("UTC")
-  weekStartDay       Int             @default(1)
-  waterDefaultTarget Int?            
-  waterDefaultUnit   WaterUnit       @default(cups)
-  dailyLayout        Json            @default("[]")
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+enum WorkspaceType {
+  personal
+  team
+}
 
-  scoreSettings      ScoreSetting[]
-  dailyEntries       DailyEntry[]
-  habits             Habit[]
-  xpEvents           XPEvent[]
-  userBadges         UserBadge[]
-  userChallenges     UserChallenge[]
-  notifications      Notification[]
+enum WorkspaceStatus {
+  active
+  suspended
+  archived
+}
+
+enum WorkspaceRole {
+  owner
+  admin
+  member
+}
+
+enum WorkspaceMemberStatus {
+  active
+  invited
+  removed
+}
+
+enum BillingStatus {
+  free
+  trialing
+  active
+  past_due
+  canceled
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+  sessionVersion      Int       @default(0)
+  name                String
+  phoneCountry        String?
+  phoneNumber         String?
+  phoneE164           String?   @unique
+  avatarUrl           String?
+  timezone            String    @default("UTC")
+  weekStartDay        Int       @default(1)
+  waterDefaultTarget  Int?
+  waterDefaultUnit    WaterUnit @default(cups)
+  dailyLayout         Json      @default("[]")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  scoreSettings    ScoreSetting[]
+  dailyEntries     DailyEntry[]
+  habits           Habit[]
+  xpEvents         XPEvent[]
+  userBadges       UserBadge[]
+  userChallenges   UserChallenge[]
+  notifications    Notification[]
+  ownedWorkspaces  Workspace[]       @relation("WorkspaceOwner")
+  workspaceMembers WorkspaceMember[]
 
   @@index([createdAt])
+}
+
+model Workspace {
+  id          String          @id @default(uuid())
+  name        String
+  slug        String?         @unique
+  ownerUserId String
+  type        WorkspaceType   @default(personal)
+  status      WorkspaceStatus @default(active)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  owner        User              @relation("WorkspaceOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members      WorkspaceMember[]
+  subscription Subscription?
+  featureUsage FeatureUsage[]
+
+  @@index([ownerUserId])
+}
+
+model WorkspaceMember {
+  id              String                @id @default(uuid())
+  workspaceId     String
+  userId          String
+  role            WorkspaceRole         @default(owner)
+  status          WorkspaceMemberStatus @default(active)
+  invitedByUserId String?
+  joinedAt        DateTime              @default(now())
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Subscription {
+  id                     String        @id @default(uuid())
+  workspaceId            String        @unique
+  planCode               String
+  billingStatus          BillingStatus @default(free)
+  provider               String?
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  trialEndsAt            DateTime?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean       @default(false)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model FeatureUsage {
+  id          String   @id @default(uuid())
+  workspaceId String
+  featureCode String
+  periodKey   String
+  usedCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, featureCode, periodKey])
+  @@index([workspaceId, featureCode])
 }
 
 model ScoreSetting {
@@ -93,24 +195,24 @@ model ScoreSetting {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, effectiveFrom])
   @@unique([userId, effectiveFrom])
+  @@index([userId, effectiveFrom])
 }
 
 model DailyEntry {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   userId        String
   date          DateTime
   growText      String?
   notesText     String?
-  tomorrowItems Json     @default("[]")
-  topWinsItems  Json     @default("[]")
-  quoteItems    Json     @default("[]")
+  tomorrowItems Json      @default("[]")
+  topWinsItems  Json      @default("[]")
+  quoteItems    Json      @default("[]")
   closedAt      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks          Task[]
   exerciseLogs   ExerciseLog[]
   gratitudeItems GratitudeItem[]
@@ -121,22 +223,22 @@ model DailyEntry {
 }
 
 model Task {
-  id                String         @id @default(uuid())
-  dailyEntryId      String
-  title             String
-  isCompleted       Boolean        @default(false)
-  priority          Priority       @default(medium)
-  category          String?
-  sortOrder         Int            @default(0)
-  createdAt         DateTime       @default(now())
-  completedAt       DateTime?
-  carryoverState    CarryoverState @default(pending_review)
+  id                 String         @id @default(uuid())
+  dailyEntryId       String
+  title              String
+  isCompleted        Boolean        @default(false)
+  priority           Priority       @default(medium)
+  category           String?
+  sortOrder          Int            @default(0)
+  createdAt          DateTime       @default(now())
+  completedAt        DateTime?
+  carryoverState     CarryoverState @default(pending_review)
   carryoverUpdatedAt DateTime?
-  sourceTaskId      String?
+  sourceTaskId       String?
 
-  dailyEntry DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
-  sourceTask Task? @relation("TaskCarryoverLink", fields: [sourceTaskId], references: [id], onDelete: SetNull)
-  derivedTasks Task[] @relation("TaskCarryoverLink")
+  dailyEntry   DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
+  sourceTask   Task?      @relation("TaskCarryoverLink", fields: [sourceTaskId], references: [id], onDelete: SetNull)
+  derivedTasks Task[]     @relation("TaskCarryoverLink")
 
   @@index([dailyEntryId, sortOrder])
   @@index([dailyEntryId, isCompleted])
@@ -145,26 +247,26 @@ model Task {
 }
 
 model Habit {
-  id         String         @id @default(uuid())
-  userId     String
-  name       String
-  frequency  HabitFrequency @default(daily)
+  id          String         @id @default(uuid())
+  userId      String
+  name        String
+  frequency   HabitFrequency @default(daily)
   targetValue Int?
-  targetUnit String?
-  customDays Json?
-  isActive   Boolean        @default(true)
+  targetUnit  String?
+  customDays  Json?
+  isActive    Boolean        @default(true)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   logs HabitLog[]
 
   @@index([userId, isActive])
 }
 
 model HabitLog {
-  id      String   @id @default(uuid())
-  habitId String
-  date    DateTime
-  isDone  Boolean  @default(false)
+  id        String   @id @default(uuid())
+  habitId   String
+  date      DateTime
+  isDone    Boolean  @default(false)
   valueDone Int?
 
   habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
@@ -198,10 +300,10 @@ model GratitudeItem {
 }
 
 model WaterLog {
-  id           String   @id @default(uuid())
-  dailyEntryId String   @unique
+  id           String    @id @default(uuid())
+  dailyEntryId String    @unique
   target       Int?
-  consumed     Int      @default(0)
+  consumed     Int       @default(0)
   unit         WaterUnit @default(cups)
 
   dailyEntry DailyEntry @relation(fields: [dailyEntryId], references: [id], onDelete: Cascade)
@@ -217,13 +319,13 @@ model XPEvent {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, date])
   @@unique([userId, date, reason])
+  @@index([userId, date])
 }
 
 model Badge {
-  id          String   @id @default(uuid())
-  code        String   @unique
+  id          String @id @default(uuid())
+  code        String @unique
   name        String
   description String
 
