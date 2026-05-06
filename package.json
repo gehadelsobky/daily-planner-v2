@@ -27,6 +27,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:backfill-workspaces": "tsx prisma/backfill-personal-workspaces.ts",
     "local:reset": "./scripts/local-reset.sh"
   },
   "dependencies": {

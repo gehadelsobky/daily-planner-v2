@@ -1,17 +1,13 @@
 import {
-  BillingStatus,
   ExerciseIntensity,
   HabitFrequency,
   Priority,
   PrismaClient,
-  WorkspaceMemberStatus,
-  WorkspaceRole,
-  WorkspaceStatus,
-  WorkspaceType,
   WaterUnit
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DEFAULT_WEIGHTS } from "../src/lib/score/constants";
+import { ensurePersonalWorkspace } from "../src/lib/saas/personal-workspace";
 
 const prisma = new PrismaClient();
 
@@ -65,20 +61,6 @@ function eachUtcDay(start: Date, end: Date): Date[] {
   return days;
 }
 
-function buildPersonalWorkspaceName(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? `${trimmed} Workspace` : "Personal Workspace";
-}
-
-function buildWorkspaceSlug(email: string): string {
-  const local = email.split("@")[0] ?? "workspace";
-  const normalized = local
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return `${normalized || "workspace"}-personal`;
-}
-
 async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
@@ -106,55 +88,10 @@ async function main() {
     }
   });
 
-  const workspace = await prisma.workspace.upsert({
-    where: { slug: buildWorkspaceSlug(user.email) },
-    update: {
-      name: buildPersonalWorkspaceName(user.name),
-      ownerUserId: user.id,
-      type: WorkspaceType.personal,
-      status: WorkspaceStatus.active
-    },
-    create: {
-      name: buildPersonalWorkspaceName(user.name),
-      slug: buildWorkspaceSlug(user.email),
-      ownerUserId: user.id,
-      type: WorkspaceType.personal,
-      status: WorkspaceStatus.active
-    }
-  });
-
-  await prisma.workspaceMember.upsert({
-    where: {
-      workspaceId_userId: {
-        workspaceId: workspace.id,
-        userId: user.id
-      }
-    },
-    update: {
-      role: WorkspaceRole.owner,
-      status: WorkspaceMemberStatus.active
-    },
-    create: {
-      workspaceId: workspace.id,
-      userId: user.id,
-      role: WorkspaceRole.owner,
-      status: WorkspaceMemberStatus.active
-    }
-  });
-
-  await prisma.subscription.upsert({
-    where: { workspaceId: workspace.id },
-    update: {
-      planCode: "free",
-      billingStatus: BillingStatus.free,
-      cancelAtPeriodEnd: false
-    },
-    create: {
-      workspaceId: workspace.id,
-      planCode: "free",
-      billingStatus: BillingStatus.free,
-      cancelAtPeriodEnd: false
-    }
+  await ensurePersonalWorkspace(prisma, {
+    id: user.id,
+    email: user.email,
+    name: user.name
   });
 
   // Reset only demo generated data in Jan/Feb 2026 so seed is deterministic and repeatable.

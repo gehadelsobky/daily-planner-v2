@@ -8,6 +8,7 @@ import { DEFAULT_WEIGHTS } from "@/lib/score/constants";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
 import { normalizePhoneDetails } from "@/lib/phone";
+import { ensurePersonalWorkspace } from "@/lib/saas/personal-workspace";
 
 export async function POST(req: Request) {
   const parsed = await parseJson(req, registerSchema);
@@ -38,26 +39,36 @@ export async function POST(req: Request) {
   }
 
   const passwordHash = await hashPassword(parsed.data.password);
-  const user = await prisma.user.create({
-    data: {
-      email: parsed.data.email.toLowerCase(),
-      passwordHash,
-      name: parsed.data.name,
-      phoneCountry: phoneDetails.phoneCountry,
-      phoneNumber: phoneDetails.phoneNumber,
-      phoneE164: phoneDetails.phoneE164,
-      scoreSettings: {
-        create: {
-          effectiveFrom: new Date(),
-          tasksWeight: DEFAULT_WEIGHTS.tasks,
-          growWeight: DEFAULT_WEIGHTS.grow,
-          habitsWeight: DEFAULT_WEIGHTS.habits,
-          exerciseWeight: DEFAULT_WEIGHTS.exercise,
-          gratefulWeight: DEFAULT_WEIGHTS.grateful,
-          waterWeight: DEFAULT_WEIGHTS.water
+  const user = await prisma.$transaction(async (tx) => {
+    const createdUser = await tx.user.create({
+      data: {
+        email: parsed.data.email.toLowerCase(),
+        passwordHash,
+        name: parsed.data.name,
+        phoneCountry: phoneDetails.phoneCountry,
+        phoneNumber: phoneDetails.phoneNumber,
+        phoneE164: phoneDetails.phoneE164,
+        scoreSettings: {
+          create: {
+            effectiveFrom: new Date(),
+            tasksWeight: DEFAULT_WEIGHTS.tasks,
+            growWeight: DEFAULT_WEIGHTS.grow,
+            habitsWeight: DEFAULT_WEIGHTS.habits,
+            exerciseWeight: DEFAULT_WEIGHTS.exercise,
+            gratefulWeight: DEFAULT_WEIGHTS.grateful,
+            waterWeight: DEFAULT_WEIGHTS.water
+          }
         }
       }
-    }
+    });
+
+    await ensurePersonalWorkspace(tx, {
+      id: createdUser.id,
+      email: createdUser.email,
+      name: createdUser.name
+    });
+
+    return createdUser;
   });
 
   const token = await createSessionToken({ sub: user.id, email: user.email, ver: user.sessionVersion });
