@@ -3,18 +3,20 @@ import { CarryoverState, NotificationStatus } from "@prisma/client";
 import { requireUser } from "@/lib/auth/guard";
 import { parseJson } from "@/lib/http";
 import { prisma } from "@/lib/db";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 import { notificationActionSchema } from "@/lib/validation/schemas";
 import { todayInTimezone, toDateOnlyUtc } from "@/lib/date";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   const parsed = await parseJson(req, notificationActionSchema);
   if (!parsed.ok) return parsed.response;
 
   const notification = await prisma.notification.findFirst({
-    where: { id: parsed.data.notification_id, userId: auth.user.id }
+    where: { id: parsed.data.notification_id, userId: auth.user.id, workspaceId: workspace.id }
   });
 
   if (!notification) {
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
       prisma.task.updateMany({
         where: {
           id: { in: taskIds },
-          dailyEntry: { userId: auth.user.id },
+          dailyEntry: { userId: auth.user.id, workspaceId: workspace.id },
           isCompleted: false,
           carryoverState: CarryoverState.pending_review
         },
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
     const sourceTasks = await tx.task.findMany({
       where: {
         id: { in: taskIds },
-        dailyEntry: { userId: auth.user.id },
+        dailyEntry: { userId: auth.user.id, workspaceId: workspace.id },
         isCompleted: false,
         carryoverState: CarryoverState.pending_review
       },
@@ -68,8 +70,8 @@ export async function POST(req: Request) {
 
     const entry = await tx.dailyEntry.upsert({
       where: { userId_date: { userId: auth.user.id, date: todayUtc } },
-      create: { userId: auth.user.id, date: todayUtc },
-      update: {}
+      create: { userId: auth.user.id, workspaceId: workspace.id, date: todayUtc },
+      update: { workspaceId: workspace.id }
     });
 
     const existingTasks = await tx.task.findMany({

@@ -5,10 +5,12 @@ import { scoreSettingsUpdateSchema } from "@/lib/validation/schemas";
 import { validateWeights } from "@/lib/validation/score-settings";
 import { prisma } from "@/lib/db";
 import { toDateOnlyUtc } from "@/lib/date";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   const parsed = await parseJson(req, scoreSettingsUpdateSchema);
   if (!parsed.ok) return parsed.response;
@@ -19,7 +21,7 @@ export async function POST(req: Request) {
   }
 
   const latest = await prisma.scoreSetting.findFirst({
-    where: { userId: auth.user.id },
+    where: { userId: auth.user.id, workspaceId: workspace.id },
     orderBy: { createdAt: "desc" }
   });
 
@@ -44,8 +46,9 @@ export async function POST(req: Request) {
       }
     },
     create: {
-      userId: auth.user.id,
-      effectiveFrom,
+        userId: auth.user.id,
+        workspaceId: workspace.id,
+        effectiveFrom,
       tasksWeight: parsed.data.weights.tasks,
       growWeight: parsed.data.weights.grow,
       habitsWeight: parsed.data.weights.habits,
@@ -54,6 +57,7 @@ export async function POST(req: Request) {
       waterWeight: parsed.data.weights.water
     },
     update: {
+      workspaceId: workspace.id,
       tasksWeight: parsed.data.weights.tasks,
       growWeight: parsed.data.weights.grow,
       habitsWeight: parsed.data.weights.habits,

@@ -5,10 +5,12 @@ import { prisma } from "@/lib/db";
 import { deleteTaskSchema } from "@/lib/validation/schemas";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey } from "@/lib/request";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function DELETE(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   if (!(await checkRateLimit(buildRateLimitKey(["task-delete", auth.user.id]), 100, 60_000))) {
     return NextResponse.json({ error: "Too many rapid task updates" }, { status: 429 });
@@ -22,7 +24,7 @@ export async function DELETE(req: Request) {
     include: { dailyEntry: true }
   });
 
-  if (!task || task.dailyEntry.userId !== auth.user.id) {
+  if (!task || task.dailyEntry.userId !== auth.user.id || task.dailyEntry.workspaceId !== workspace.id) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
   if (task.dailyEntry.closedAt) {

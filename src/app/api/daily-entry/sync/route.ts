@@ -11,6 +11,7 @@ import { upsertXpForDay } from "@/lib/gamification/xp";
 import { calculateDailyScore } from "@/lib/score/service";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey } from "@/lib/request";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 const syncSchema = z.object({
   date: dateSchema
@@ -19,6 +20,7 @@ const syncSchema = z.object({
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   const parsed = await parseJson(req, syncSchema);
   if (!parsed.ok) return parsed.response;
@@ -30,11 +32,11 @@ export async function POST(req: Request) {
   await runForTomorrowMigration(auth.user.id, parsed.data.date, auth.user.timezone);
 
   const today = todayInTimezone(auth.user.timezone);
-  await ensureCarryoverReminder(auth.user.id, auth.user.timezone, today);
+  await ensureCarryoverReminder(auth.user.id, auth.user.timezone, today, workspace.id);
 
-  const score = await calculateDailyScore(auth.user.id, parsed.data.date, auth.user.timezone);
-  const milestones = await evaluateGamification(auth.user.id, parsed.data.date, auth.user.timezone);
-  await upsertXpForDay(auth.user.id, parsed.data.date, auth.user.timezone, score, milestones);
+  const score = await calculateDailyScore(auth.user.id, parsed.data.date, auth.user.timezone, undefined, workspace.id);
+  const milestones = await evaluateGamification(auth.user.id, parsed.data.date, auth.user.timezone, workspace.id);
+  await upsertXpForDay(auth.user.id, parsed.data.date, auth.user.timezone, score, milestones, workspace.id);
 
   return NextResponse.json({ ok: true });
 }

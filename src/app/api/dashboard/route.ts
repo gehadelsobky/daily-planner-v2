@@ -7,6 +7,7 @@ import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { levelFromXp } from "@/lib/gamification";
 import { calculateDailyRecurringXpBreakdown } from "@/lib/gamification/xp";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
@@ -15,6 +16,7 @@ const querySchema = z.object({
 export async function GET(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   const { searchParams } = new URL(req.url);
   const parsed = querySchema.safeParse({ range: searchParams.get("range") ?? "week" });
@@ -26,12 +28,13 @@ export async function GET(req: Request) {
   const now = new Date();
   const today = formatDateInTimezone(now, auth.user.timezone);
   const todayUtc = toDateOnlyUtc(today, auth.user.timezone);
-  const todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone);
+  const todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone, undefined, workspace.id);
   const todayRecurring = await calculateDailyRecurringXpBreakdown(
     auth.user.id,
     today,
     auth.user.timezone,
-    todayScore
+    todayScore,
+    workspace.id
   );
   const series = [] as Array<{ date: string; score: number }>;
 
@@ -39,7 +42,7 @@ export async function GET(req: Request) {
     const d = subDays(now, i);
     const date = formatDateInTimezone(d, auth.user.timezone);
     try {
-      const score = await calculateDailyScore(auth.user.id, date, auth.user.timezone);
+      const score = await calculateDailyScore(auth.user.id, date, auth.user.timezone, undefined, workspace.id);
       series.push({ date, score: score.scorePercent });
     } catch (error) {
       console.error("dashboard series score failed", { date, error });
@@ -47,7 +50,9 @@ export async function GET(req: Request) {
     }
   }
 
-  const xpEvents = await prisma.xPEvent.findMany({ where: { userId: auth.user.id } });
+  const xpEvents = await prisma.xPEvent.findMany({
+    where: { userId: auth.user.id, workspaceId: workspace.id }
+  });
   const totalXp = xpEvents.reduce((sum, e) => sum + e.xp, 0);
   const todayXpEvents = xpEvents.filter((event) => event.date.getTime() === todayUtc.getTime());
   const todayMilestones = todayXpEvents

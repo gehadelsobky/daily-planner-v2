@@ -7,10 +7,12 @@ import { toDateOnlyUtc } from "@/lib/date";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey } from "@/lib/request";
 import { rejectIfDayClosed } from "@/lib/daily/locks";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   if (!(await checkRateLimit(buildRateLimitKey(["habit-toggle", auth.user.id]), 120, 60_000))) {
     return NextResponse.json({ error: "Too many rapid updates" }, { status: 429 });
@@ -20,12 +22,12 @@ export async function POST(req: Request) {
   if (!parsed.ok) return parsed.response;
 
   const habit = await prisma.habit.findUnique({ where: { id: parsed.data.habit_id } });
-  if (!habit || habit.userId !== auth.user.id) {
+  if (!habit || habit.userId !== auth.user.id || habit.workspaceId !== workspace.id) {
     return NextResponse.json({ error: "Habit not found" }, { status: 404 });
   }
 
   const date = toDateOnlyUtc(parsed.data.date, auth.user.timezone);
-  const closedResponse = await rejectIfDayClosed(auth.user.id, date);
+  const closedResponse = await rejectIfDayClosed(auth.user.id, date, workspace.id);
   if (closedResponse) return closedResponse;
 
   const valueDone = parsed.data.value_done;

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { calculateDailyScore, normalizeWaterTarget } from "@/lib/score/service";
 import { SYSTEM_DEFAULT_WATER_TARGET } from "@/lib/score/constants";
 import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 type DayRecord = {
   date: string;
@@ -143,8 +144,10 @@ export type GamificationEvaluationResult = {
 export async function evaluateGamification(
   userId: string,
   asOfDate: string,
-  timezone: string
+  timezone: string,
+  workspaceId?: string
 ): Promise<GamificationEvaluationResult> {
+  const resolvedWorkspaceId = workspaceId ?? (await requireCurrentWorkspace(userId)).id;
   const awardedBadges = new Set<string>();
   const completedChallenges = new Set<string>();
   const asOfUtc = toDateOnlyUtc(asOfDate, timezone);
@@ -156,6 +159,7 @@ export async function evaluateGamification(
     prisma.dailyEntry.findMany({
       where: {
         userId,
+        workspaceId: resolvedWorkspaceId,
         date: { lte: asOfUtc }
       },
       include: {
@@ -223,7 +227,7 @@ export async function evaluateGamification(
     dayRecords.map(async (day) => ({
       date: day.date,
       dateUtc: day.dateUtc,
-      score: await calculateDailyScore(userId, day.date, timezone)
+      score: await calculateDailyScore(userId, day.date, timezone, undefined, resolvedWorkspaceId)
     }))
   );
 

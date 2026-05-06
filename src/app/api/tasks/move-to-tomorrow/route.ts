@@ -3,10 +3,12 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth/guard";
 import { parseJson } from "@/lib/http";
 import { moveToTomorrowSchema } from "@/lib/validation/schemas";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   const parsed = await parseJson(req, moveToTomorrowSchema);
   if (!parsed.ok) return parsed.response;
@@ -15,7 +17,7 @@ export async function POST(req: Request) {
     where: { id: parsed.data.task_id },
     include: { dailyEntry: true }
   });
-  if (!task || task.dailyEntry.userId !== auth.user.id) {
+  if (!task || task.dailyEntry.userId !== auth.user.id || task.dailyEntry.workspaceId !== workspace.id) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
   if (task.dailyEntry.closedAt) {

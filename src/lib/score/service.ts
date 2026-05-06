@@ -1,15 +1,18 @@
 import { HabitFrequency, Prisma, WaterUnit } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { toDateOnlyUtc } from "@/lib/date";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 import { DEFAULT_WEIGHTS, SYSTEM_DEFAULT_WATER_TARGET } from "@/lib/score/constants";
 import { computeDailyScore } from "@/lib/score/engine";
 import { ScoreWeights } from "@/lib/score/types";
 import { formatInTimeZone } from "date-fns-tz";
 
-export async function getEffectiveWeights(userId: string, date: Date): Promise<ScoreWeights> {
+export async function getEffectiveWeights(userId: string, date: Date, workspaceId?: string): Promise<ScoreWeights> {
+  const resolvedWorkspaceId = workspaceId ?? (await requireCurrentWorkspace(userId)).id;
   const record = await prisma.scoreSetting.findFirst({
     where: {
       userId,
+      workspaceId: resolvedWorkspaceId,
       effectiveFrom: { lte: date }
     },
     orderBy: { effectiveFrom: "desc" }
@@ -36,12 +39,13 @@ type DailyData = Prisma.DailyEntryGetPayload<{
   };
 }>;
 
-export async function getOrCreateDailyEntry(userId: string, dateString: string, timezone: string) {
+export async function getOrCreateDailyEntry(userId: string, dateString: string, timezone: string, workspaceId?: string) {
   const date = toDateOnlyUtc(dateString, timezone);
+  const resolvedWorkspaceId = workspaceId ?? (await requireCurrentWorkspace(userId)).id;
   return prisma.dailyEntry.upsert({
     where: { userId_date: { userId, date } },
-    create: { userId, date },
-    update: {},
+    create: { userId, workspaceId: resolvedWorkspaceId, date },
+    update: { workspaceId: resolvedWorkspaceId },
     include: {
       tasks: { orderBy: { sortOrder: "asc" } },
       gratitudeItems: { orderBy: { createdAt: "asc" } },
@@ -51,10 +55,11 @@ export async function getOrCreateDailyEntry(userId: string, dateString: string, 
   });
 }
 
-export async function getDailyEntry(userId: string, dateString: string, timezone: string) {
+export async function getDailyEntry(userId: string, dateString: string, timezone: string, workspaceId?: string) {
   const date = toDateOnlyUtc(dateString, timezone);
-  return prisma.dailyEntry.findUnique({
-    where: { userId_date: { userId, date } },
+  const resolvedWorkspaceId = workspaceId ?? (await requireCurrentWorkspace(userId)).id;
+  return prisma.dailyEntry.findFirst({
+    where: { userId, workspaceId: resolvedWorkspaceId, date },
     include: {
       tasks: { orderBy: { sortOrder: "asc" } },
       gratitudeItems: { orderBy: { createdAt: "asc" } },
@@ -73,19 +78,26 @@ function habitExpectedToday(habit: { frequency: HabitFrequency; customDays: Pris
   return false;
 }
 
-export async function calculateDailyScore(userId: string, dateString: string, timezone: string, dailyData?: DailyData) {
+export async function calculateDailyScore(
+  userId: string,
+  dateString: string,
+  timezone: string,
+  dailyData?: DailyData,
+  workspaceId?: string
+) {
   const date = toDateOnlyUtc(dateString, timezone);
+  const resolvedWorkspaceId = workspaceId ?? (await requireCurrentWorkspace(userId)).id;
 
   const entry =
     dailyData ??
-    (await prisma.dailyEntry.findUnique({
-      where: { userId_date: { userId, date } },
+    (await prisma.dailyEntry.findFirst({
+      where: { userId, workspaceId: resolvedWorkspaceId, date },
       include: { tasks: true, gratitudeItems: true, exerciseLogs: true, waterLog: true }
     }));
 
   if (!entry) {
     const score = computeDailyScore({
-      weights: await getEffectiveWeights(userId, date),
+      weights: await getEffectiveWeights(userId, date, resolvedWorkspaceId),
       plannedTasks: 0,
       completedTasks: 0,
       growText: "",
@@ -100,13 +112,13 @@ export async function calculateDailyScore(userId: string, dateString: string, ti
   }
 
   const [weights, habits, habitLogs, user] = await Promise.all([
-    getEffectiveWeights(userId, date),
-    prisma.habit.findMany({ where: { userId, isActive: true } }),
+    getEffectiveWeights(userId, date, resolvedWorkspaceId),
+    prisma.habit.findMany({ where: { userId, workspaceId: resolvedWorkspaceId, isActive: true } }),
     prisma.habitLog.findMany({
       where: {
         date,
         habit: {
-          is: { userId, isActive: true }
+          is: { userId, workspaceId: resolvedWorkspaceId, isActive: true }
         }
       },
       include: { habit: true }

@@ -1,6 +1,7 @@
 import { subDays } from "date-fns";
 import { prisma } from "@/lib/db";
 import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 import { calculateDailyScore } from "@/lib/score/service";
 import { DailyScoreResult, ScoreComponentKey } from "@/lib/score/types";
 
@@ -126,7 +127,8 @@ async function getRecentScores(
   userId: string,
   asOfDate: string,
   timezone: string,
-  lookbackDays = 45
+  lookbackDays = 45,
+  workspaceId?: string
 ): Promise<DailyScoreResult[]> {
   const asOfUtc = toDateOnlyUtc(asOfDate, timezone);
   const dates = [] as string[];
@@ -136,7 +138,7 @@ async function getRecentScores(
 
   const results = [] as DailyScoreResult[];
   for (const date of dates) {
-    results.push(await calculateDailyScore(userId, date, timezone));
+    results.push(await calculateDailyScore(userId, date, timezone, undefined, workspaceId));
   }
   return results;
 }
@@ -146,15 +148,24 @@ export async function upsertXpForDay(
   dateString: string,
   timezone: string,
   score: DailyScoreResult,
-  milestones: XpMilestones
+  milestones: XpMilestones,
+  workspaceId?: string
 ) {
   const dateUtc = toDateOnlyUtc(dateString, timezone);
-  const breakdown = await calculateDailyRecurringXpBreakdown(userId, dateString, timezone, score);
+  const resolvedWorkspaceId = workspaceId ?? (await requireCurrentWorkspace(userId)).id;
+  const breakdown = await calculateDailyRecurringXpBreakdown(
+    userId,
+    dateString,
+    timezone,
+    score,
+    resolvedWorkspaceId
+  );
   const recurringXp = breakdown.recurringCapped;
 
   await prisma.xPEvent.deleteMany({
     where: {
       userId,
+      workspaceId: resolvedWorkspaceId,
       date: dateUtc,
       reason: "daily_score"
     }
@@ -170,6 +181,7 @@ export async function upsertXpForDay(
     },
     create: {
       userId,
+      workspaceId: resolvedWorkspaceId,
       date: dateUtc,
       reason: "daily_recurring",
       xp: recurringXp
@@ -182,14 +194,15 @@ export async function upsertXpForDay(
   for (const code of milestones.awardedBadges) {
     const reason = `badge:${code}`;
     const existing = await prisma.xPEvent.findFirst({
-      where: { userId, reason },
-      select: { id: true }
+      where: { userId, workspaceId: resolvedWorkspaceId, reason },
+      select: { id: true, workspaceId: true }
     });
     if (existing) continue;
 
     await prisma.xPEvent.create({
       data: {
         userId,
+        workspaceId: resolvedWorkspaceId,
         date: dateUtc,
         reason,
         xp: BADGE_XP_REWARD
@@ -200,14 +213,15 @@ export async function upsertXpForDay(
   for (const code of milestones.completedChallenges) {
     const reason = `challenge:${code}:completed`;
     const existing = await prisma.xPEvent.findFirst({
-      where: { userId, reason },
-      select: { id: true }
+      where: { userId, workspaceId: resolvedWorkspaceId, reason },
+      select: { id: true, workspaceId: true }
     });
     if (existing) continue;
 
     await prisma.xPEvent.create({
       data: {
         userId,
+        workspaceId: resolvedWorkspaceId,
         date: dateUtc,
         reason,
         xp: CHALLENGE_XP_REWARD
@@ -220,7 +234,8 @@ export async function calculateDailyRecurringXpBreakdown(
   userId: string,
   dateString: string,
   timezone: string,
-  score: DailyScoreResult
+  score: DailyScoreResult,
+  workspaceId?: string
 ): Promise<DailyXpBreakdown> {
   const baseXp = Math.max(0, Math.floor(score.scorePercent));
 
@@ -239,7 +254,7 @@ export async function calculateDailyRecurringXpBreakdown(
   const exerciseBonus = exerciseNormalized >= 1 ? 5 : 0;
   const reflectionBonus = growNormalized >= 1 && gratefulNormalized >= 1 ? 5 : 0;
 
-  const recentScores = await getRecentScores(userId, dateString, timezone);
+  const recentScores = await getRecentScores(userId, dateString, timezone, 45, workspaceId);
   const scoreStreak = currentScoreStreak(recentScores);
   const hydrationStreak = currentHydrationStreak(recentScores);
   const habitStreak = currentHabitStreak(recentScores);

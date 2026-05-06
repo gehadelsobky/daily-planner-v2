@@ -3,10 +3,12 @@ import { requireUser } from "@/lib/auth/guard";
 import { parseJson } from "@/lib/http";
 import { habitCreateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   const parsed = await parseJson(req, habitCreateSchema);
   if (!parsed.ok) return parsed.response;
@@ -18,6 +20,7 @@ export async function POST(req: Request) {
   const habit = await prisma.habit.create({
     data: {
       userId: auth.user.id,
+      workspaceId: workspace.id,
       name: parsed.data.name,
       frequency: parsed.data.frequency,
       targetValue: parsed.data.target_value,

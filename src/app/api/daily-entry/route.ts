@@ -8,6 +8,7 @@ import { formatDateInTimezone, toDateOnlyUtc, todayInTimezone } from "@/lib/date
 import { CarryoverState } from "@prisma/client";
 import { SYSTEM_DEFAULT_WATER_TARGET } from "@/lib/score/constants";
 import { computeDayStatus } from "@/lib/daily/day-status";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 const querySchema = z.object({
   date: dateSchema
@@ -23,18 +24,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid date query" }, { status: 400 });
   }
 
-  const entry = await getDailyEntry(auth.user.id, parsed.data.date, auth.user.timezone);
+  const workspace = await requireCurrentWorkspace(auth.user.id);
+  const entry = await getDailyEntry(auth.user.id, parsed.data.date, auth.user.timezone, workspace.id);
   const dateUtc = toDateOnlyUtc(parsed.data.date, auth.user.timezone);
   const today = todayInTimezone(auth.user.timezone);
   const todayUtc = toDateOnlyUtc(today, auth.user.timezone);
   const habits = await prisma.habit.findMany({
-    where: { userId: auth.user.id, isActive: true },
+    where: { userId: auth.user.id, workspaceId: workspace.id, isActive: true },
     orderBy: { name: "asc" }
   });
   const habitLogs = await prisma.habitLog.findMany({
     where: {
       date: dateUtc,
-      habit: { is: { userId: auth.user.id } }
+      habit: { is: { userId: auth.user.id, workspaceId: workspace.id } }
     }
   });
   const carryoverTasksRaw = await prisma.task.findMany({
@@ -43,6 +45,7 @@ export async function GET(req: Request) {
       carryoverState: CarryoverState.pending_review,
       dailyEntry: {
         userId: auth.user.id,
+        workspaceId: workspace.id,
         date: { lt: todayUtc }
       }
     },
@@ -60,7 +63,13 @@ export async function GET(req: Request) {
     priority: task.priority,
     sourceDate: formatDateInTimezone(task.dailyEntry.date, auth.user.timezone)
   }));
-  const score = await calculateDailyScore(auth.user.id, parsed.data.date, auth.user.timezone, entry ?? undefined);
+  const score = await calculateDailyScore(
+    auth.user.id,
+    parsed.data.date,
+    auth.user.timezone,
+    entry ?? undefined,
+    workspace.id
+  );
   const effectiveWaterTarget =
     entry?.waterLog?.target ?? auth.user.waterDefaultTarget ?? SYSTEM_DEFAULT_WATER_TARGET;
   const effectiveWaterUnit = entry?.waterLog?.unit ?? auth.user.waterDefaultUnit;

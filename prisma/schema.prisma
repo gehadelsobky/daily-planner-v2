@@ -126,6 +126,11 @@ model Workspace {
   members      WorkspaceMember[]
   subscription Subscription?
   featureUsage FeatureUsage[]
+  scoreSettings ScoreSetting[]
+  dailyEntries  DailyEntry[]
+  habits        Habit[]
+  xpEvents      XPEvent[]
+  notifications Notification[]
 
   @@index([ownerUserId])
 }
@@ -184,6 +189,7 @@ model FeatureUsage {
 model ScoreSetting {
   id             String   @id @default(uuid())
   userId         String
+  workspaceId    String?
   effectiveFrom  DateTime
   tasksWeight    Int
   growWeight     Int
@@ -193,15 +199,18 @@ model ScoreSetting {
   waterWeight    Int
   createdAt      DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, effectiveFrom])
   @@index([userId, effectiveFrom])
+  @@index([workspaceId, effectiveFrom])
 }
 
 model DailyEntry {
   id            String    @id @default(uuid())
   userId        String
+  workspaceId   String?
   date          DateTime
   growText      String?
   notesText     String?
@@ -213,6 +222,7 @@ model DailyEntry {
   updatedAt     DateTime  @updatedAt
 
   user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace      Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
   tasks          Task[]
   exerciseLogs   ExerciseLog[]
   gratitudeItems GratitudeItem[]
@@ -220,6 +230,7 @@ model DailyEntry {
 
   @@unique([userId, date])
   @@index([userId, date])
+  @@index([workspaceId, date])
 }
 
 model Task {
@@ -249,6 +260,7 @@ model Task {
 model Habit {
   id          String         @id @default(uuid())
   userId      String
+  workspaceId String?
   name        String
   frequency   HabitFrequency @default(daily)
   targetValue Int?
@@ -256,10 +268,12 @@ model Habit {
   customDays  Json?
   isActive    Boolean        @default(true)
 
-  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  logs HabitLog[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  logs      HabitLog[]
 
   @@index([userId, isActive])
+  @@index([workspaceId, isActive])
 }
 
 model HabitLog {
@@ -310,17 +324,20 @@ model WaterLog {
 }
 
 model XPEvent {
-  id        String   @id @default(uuid())
-  userId    String
-  date      DateTime
-  xp        Int
-  reason    String
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String
+  workspaceId String?
+  date        DateTime
+  xp          Int
+  reason      String
+  createdAt   DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@unique([userId, date, reason])
   @@index([userId, date])
+  @@index([workspaceId, date])
 }
 
 model Badge {
@@ -380,19 +397,23 @@ model RateLimitBucket {
 }
 
 model Notification {
-  id        String             @id @default(uuid())
-  userId    String
-  type      NotificationType
-  title     String
-  body      String
-  payload   Json?
-  status    NotificationStatus @default(unread)
-  dedupeKey String?            @unique
-  createdAt DateTime           @default(now())
-  readAt    DateTime?
+  id          String             @id @default(uuid())
+  userId      String
+  workspaceId String?
+  type        NotificationType
+  title       String
+  body        String
+  payload     Json?
+  status      NotificationStatus @default(unread)
+  dedupeKey   String?            @unique
+  createdAt   DateTime           @default(now())
+  readAt      DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
 
   @@index([userId, status, createdAt])
   @@index([userId, createdAt])
+  @@index([workspaceId, status, createdAt])
+  @@index([workspaceId, createdAt])
 }

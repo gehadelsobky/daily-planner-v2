@@ -4,16 +4,18 @@ import { requireUser } from "@/lib/auth/guard";
 import { parseJson } from "@/lib/http";
 import { habitUpdateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function PATCH(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   const parsed = await parseJson(req, habitUpdateSchema);
   if (!parsed.ok) return parsed.response;
 
   const habit = await prisma.habit.findUnique({ where: { id: parsed.data.habit_id } });
-  if (!habit || habit.userId !== auth.user.id) {
+  if (!habit || habit.userId !== auth.user.id || habit.workspaceId !== workspace.id) {
     return NextResponse.json({ error: "Habit not found" }, { status: 404 });
   }
 
@@ -32,6 +34,7 @@ export async function PATCH(req: Request) {
   const updated = await prisma.habit.update({
     where: { id: habit.id },
     data: {
+      workspaceId: workspace.id,
       name: parsed.data.name,
       frequency: parsed.data.frequency,
       targetValue: parsed.data.target_value,

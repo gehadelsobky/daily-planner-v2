@@ -7,10 +7,12 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { todayInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { carryoverActionSchema } from "@/lib/validation/schemas";
 import { buildRateLimitKey } from "@/lib/request";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   if (!(await checkRateLimit(buildRateLimitKey(["carryover-action", auth.user.id]), 60, 60_000))) {
     return NextResponse.json({ error: "Too many carryover actions. Try again shortly." }, { status: 429 });
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
     const sourceTasks = await tx.task.findMany({
       where: {
         id: { in: parsed.data.task_ids },
-        dailyEntry: { userId: auth.user.id }
+        dailyEntry: { userId: auth.user.id, workspaceId: workspace.id }
       },
       include: { dailyEntry: true }
     });
@@ -66,8 +68,8 @@ export async function POST(req: Request) {
     const targetDateUtc = toDateOnlyUtc(targetDate!, auth.user.timezone);
     const entry = await tx.dailyEntry.upsert({
       where: { userId_date: { userId: auth.user.id, date: targetDateUtc } },
-      create: { userId: auth.user.id, date: targetDateUtc },
-      update: {}
+      create: { userId: auth.user.id, workspaceId: workspace.id, date: targetDateUtc },
+      update: { workspaceId: workspace.id }
     });
 
     const existingTasks = await tx.task.findMany({

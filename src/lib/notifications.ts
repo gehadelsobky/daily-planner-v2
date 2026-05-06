@@ -1,8 +1,15 @@
 import { CarryoverState, NotificationStatus, NotificationType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { toDateOnlyUtc } from "@/lib/date";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
-export async function ensureCarryoverReminder(userId: string, timezone: string, todayDate: string) {
+export async function ensureCarryoverReminder(
+  userId: string,
+  timezone: string,
+  todayDate: string,
+  workspaceId?: string
+) {
+  const resolvedWorkspaceId = workspaceId ?? (await requireCurrentWorkspace(userId)).id;
   const todayUtc = toDateOnlyUtc(todayDate, timezone);
   const carryoverTasks = await prisma.task.findMany({
     where: {
@@ -10,6 +17,7 @@ export async function ensureCarryoverReminder(userId: string, timezone: string, 
       carryoverState: CarryoverState.pending_review,
       dailyEntry: {
         userId,
+        workspaceId: resolvedWorkspaceId,
         date: { lt: todayUtc }
       }
     },
@@ -28,6 +36,7 @@ export async function ensureCarryoverReminder(userId: string, timezone: string, 
     where: { dedupeKey },
     create: {
       userId,
+      workspaceId: resolvedWorkspaceId,
       type: NotificationType.carryover_tasks,
       title,
       body,

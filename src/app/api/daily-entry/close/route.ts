@@ -9,10 +9,12 @@ import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { computeDayStatus } from "@/lib/daily/day-status";
 import { buildRateLimitKey } from "@/lib/request";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   if (!(await checkRateLimit(buildRateLimitKey(["close-day", auth.user.id]), 20, 60_000))) {
     return NextResponse.json({ error: "Too many close day actions. Try again shortly." }, { status: 429 });
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
       }
     });
 
-    if (!entry) {
+    if (!entry || entry.workspaceId !== workspace.id) {
       return null;
     }
 
@@ -60,8 +62,8 @@ export async function POST(req: Request) {
     if (carryIds.length) {
       const targetEntry = await tx.dailyEntry.upsert({
         where: { userId_date: { userId: auth.user.id, date: tomorrowDateUtc } },
-        create: { userId: auth.user.id, date: tomorrowDateUtc },
-        update: {}
+        create: { userId: auth.user.id, workspaceId: workspace.id, date: tomorrowDateUtc },
+        update: { workspaceId: workspace.id }
       });
 
       const existingTasks = await tx.task.findMany({
@@ -138,7 +140,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Day entry not found." }, { status: 404 });
   }
 
-  const score = await calculateDailyScore(auth.user.id, parsed.data.date, auth.user.timezone, result.entry);
+  const score = await calculateDailyScore(
+    auth.user.id,
+    parsed.data.date,
+    auth.user.timezone,
+    result.entry,
+    workspace.id
+  );
   const dayStatus = computeDayStatus({
     selectedDate: parsed.data.date,
     today,

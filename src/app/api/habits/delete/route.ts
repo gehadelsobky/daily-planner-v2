@@ -5,10 +5,12 @@ import { prisma } from "@/lib/db";
 import { habitDeleteSchema } from "@/lib/validation/schemas";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey } from "@/lib/request";
+import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
 
 export async function DELETE(req: Request) {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+  const workspace = await requireCurrentWorkspace(auth.user.id);
 
   if (!(await checkRateLimit(buildRateLimitKey(["habit-delete", auth.user.id]), 40, 60_000))) {
     return NextResponse.json({ error: "Too many rapid habit updates" }, { status: 429 });
@@ -21,7 +23,7 @@ export async function DELETE(req: Request) {
     where: { id: parsed.data.habit_id }
   });
 
-  if (!habit || habit.userId !== auth.user.id) {
+  if (!habit || habit.userId !== auth.user.id || habit.workspaceId !== workspace.id) {
     return NextResponse.json({ error: "Habit not found" }, { status: 404 });
   }
 
