@@ -4,6 +4,7 @@ import { habitCreateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
 import { canCreateAnotherHabit } from "@/lib/saas/plans";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
+import { syncWorkspaceFeatureUsage } from "@/lib/saas/feature-usage";
 
 export async function POST(req: Request) {
   const ctx = await requireWorkspaceContext();
@@ -40,6 +41,8 @@ export async function POST(req: Request) {
       customDays: parsed.data.custom_days === null ? Prisma.DbNull : parsed.data.custom_days
     }
   });
+
+  await syncWorkspaceFeatureUsage(workspace.id);
 
   return Response.json({ habit });
 }

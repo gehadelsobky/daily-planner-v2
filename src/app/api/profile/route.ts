@@ -4,6 +4,8 @@ import { profileUpdateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
 import { isValidTimezone } from "@/lib/date";
 import { normalizePhoneDetails } from "@/lib/phone";
+import { requireWorkspaceContextFromUser } from "@/lib/saas/workspace-runtime";
+import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -13,6 +15,9 @@ function asStringArray(value: unknown): string[] {
 export async function GET() {
   const auth = await requireUser();
   if (!auth.ok) return auth.response;
+
+  const workspaceContext = await requireWorkspaceContextFromUser(auth.user);
+  const usage = await getWorkspaceUsageSnapshot(workspaceContext.workspace.id);
 
   return Response.json({
     profile: {
@@ -28,6 +33,14 @@ export async function GET() {
       waterDefaultTarget: auth.user.waterDefaultTarget,
       waterDefaultUnit: auth.user.waterDefaultUnit,
       dailyLayout: asStringArray(auth.user.dailyLayout)
+    },
+    workspace: {
+      id: workspaceContext.workspace.id,
+      name: workspaceContext.workspace.name,
+      planCode: workspaceContext.planCode,
+      billingStatus: workspaceContext.subscription.billingStatus,
+      entitlements: workspaceContext.entitlements,
+      usage
     }
   });
 }

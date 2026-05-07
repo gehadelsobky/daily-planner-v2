@@ -7,6 +7,7 @@ import { calculateDailyScore } from "@/lib/score/service";
 import { levelFromXp } from "@/lib/gamification";
 import { calculateDailyRecurringXpBreakdown } from "@/lib/gamification/xp";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
+import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
@@ -15,7 +16,7 @@ const querySchema = z.object({
 export async function GET(req: Request) {
   const ctx = await requireWorkspaceContext();
   if (!ctx.ok) return ctx.response;
-  const { user, workspace } = ctx.context;
+  const { user, workspace, subscription, planCode, entitlements } = ctx.context;
 
   const { searchParams } = new URL(req.url);
   const parsed = querySchema.safeParse({ range: searchParams.get("range") ?? "week" });
@@ -49,6 +50,8 @@ export async function GET(req: Request) {
     }
   }
 
+  const usage = await getWorkspaceUsageSnapshot(workspace.id);
+
   const xpEvents = await prisma.xPEvent.findMany({
     where: { userId: user.id, workspaceId: workspace.id }
   });
@@ -66,6 +69,14 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     range: parsed.data.range,
+    workspace: {
+      id: workspace.id,
+      name: workspace.name,
+      planCode,
+      billingStatus: subscription.billingStatus,
+      usage,
+      entitlements
+    },
     series,
     stats: {
       avgScore: Math.round(series.reduce((sum, d) => sum + d.score, 0) / series.length),

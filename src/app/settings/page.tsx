@@ -60,6 +60,26 @@ type ProfileResponse = {
     waterDefaultTarget: number | null;
     waterDefaultUnit: WaterUnit;
   };
+  workspace: {
+    id: string;
+    name: string;
+    planCode: string;
+    billingStatus: string;
+    entitlements: {
+      maxHabits: number | "unlimited";
+      analyticsWindowDays: number;
+      canUseAdvancedAnalytics: boolean;
+      canUseEmailReminders: boolean;
+      canExportData: boolean;
+      canUseMonthlyReview: boolean;
+      canUseTeamFeatures: boolean;
+    };
+    usage: {
+      habitsCount: number;
+      teamMembersCount: number;
+      periodKey: string;
+    };
+  };
 };
 
 export default function SettingsPage() {
@@ -277,6 +297,14 @@ export default function SettingsPage() {
   }, [profileTimezone]);
 
   const canCreateHabit = habitName.trim().length > 0 && (habitFrequency !== "custom" || habitCustomDays.length > 0);
+  const workspacePlan = profile.data?.workspace?.planCode?.toUpperCase() ?? "FREE";
+  const workspaceUsage = profile.data?.workspace?.usage;
+  const workspaceEntitlements = profile.data?.workspace?.entitlements;
+  const habitLimitLabel = workspaceEntitlements
+    ? workspaceEntitlements.maxHabits === "unlimited"
+      ? `${workspaceUsage?.habitsCount ?? 0} habits in use`
+      : `${workspaceUsage?.habitsCount ?? 0}/${workspaceEntitlements.maxHabits} habits used`
+    : `${activeCount} active habits`;
   const selectedProfileCountry = getPhoneCountryOption(profilePhoneCountry);
   const profileInitials = (profileName || "Your Account")
     .split(/\s+/)
@@ -318,7 +346,8 @@ export default function SettingsPage() {
               Configure how your planner behaves, how your score is calculated, and which habits appear in your daily system.
             </p>
             <div className="flex flex-wrap gap-2">
-              <Badge>{activeCount} active habits</Badge>
+              <Badge>{workspacePlan} plan</Badge>
+              <Badge>{habitLimitLabel}</Badge>
               <Badge>{profileWaterUnit} water tracking</Badge>
               <Badge>{totalWeights}% total score weight</Badge>
             </div>
@@ -365,6 +394,12 @@ export default function SettingsPage() {
                     {selectedProfileCountry.flag} {selectedProfileCountry.name}
                   </p>
                   <p className="mt-2 text-xs text-muted-foreground">Dial code {selectedProfileCountry.dialCode}</p>
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Plan</p>
+                  <p className="mt-1 text-base font-semibold text-[hsl(var(--foreground))]">{workspacePlan}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{habitLimitLabel}. Analytics window {workspaceEntitlements?.analyticsWindowDays ?? 90} days.</p>
                 </div>
 
                 <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3 sm:col-span-2 xl:col-span-1">
