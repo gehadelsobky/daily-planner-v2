@@ -1,14 +1,14 @@
 import { Prisma } from "@prisma/client";
-import { requireUser } from "@/lib/auth/guard";
 import { parseJson } from "@/lib/http";
 import { habitCreateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
-import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
+import { canCreateAnotherHabit } from "@/lib/saas/plans";
+import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 
 export async function POST(req: Request) {
-  const auth = await requireUser();
-  if (!auth.ok) return auth.response;
-  const workspace = await requireCurrentWorkspace(auth.user.id);
+  const ctx = await requireWorkspaceContext();
+  if (!ctx.ok) return ctx.response;
+  const { user, workspace, entitlements } = ctx.context;
 
   const parsed = await parseJson(req, habitCreateSchema);
   if (!parsed.ok) return parsed.response;
@@ -17,9 +17,21 @@ export async function POST(req: Request) {
     return Response.json({ error: "Custom habits require at least one selected day" }, { status: 400 });
   }
 
+  const currentHabitCount = await prisma.habit.count({
+    where: { userId: user.id, workspaceId: workspace.id }
+  });
+  if (!canCreateAnotherHabit(entitlements, currentHabitCount)) {
+    return Response.json(
+      {
+        error: `Your current plan allows up to ${entitlements.maxHabits} habits.`
+      },
+      { status: 403 }
+    );
+  }
+
   const habit = await prisma.habit.create({
     data: {
-      userId: auth.user.id,
+      userId: user.id,
       workspaceId: workspace.id,
       name: parsed.data.name,
       frequency: parsed.data.frequency,

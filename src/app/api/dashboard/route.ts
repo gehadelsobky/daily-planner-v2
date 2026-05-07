@@ -2,21 +2,20 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { subDays } from "date-fns";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth/guard";
 import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { levelFromXp } from "@/lib/gamification";
 import { calculateDailyRecurringXpBreakdown } from "@/lib/gamification/xp";
-import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
+import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
 });
 
 export async function GET(req: Request) {
-  const auth = await requireUser();
-  if (!auth.ok) return auth.response;
-  const workspace = await requireCurrentWorkspace(auth.user.id);
+  const ctx = await requireWorkspaceContext();
+  if (!ctx.ok) return ctx.response;
+  const { user, workspace } = ctx.context;
 
   const { searchParams } = new URL(req.url);
   const parsed = querySchema.safeParse({ range: searchParams.get("range") ?? "week" });
@@ -26,13 +25,13 @@ export async function GET(req: Request) {
 
   const days = parsed.data.range === "week" ? 7 : 30;
   const now = new Date();
-  const today = formatDateInTimezone(now, auth.user.timezone);
-  const todayUtc = toDateOnlyUtc(today, auth.user.timezone);
-  const todayScore = await calculateDailyScore(auth.user.id, today, auth.user.timezone, undefined, workspace.id);
+  const today = formatDateInTimezone(now, user.timezone);
+  const todayUtc = toDateOnlyUtc(today, user.timezone);
+  const todayScore = await calculateDailyScore(user.id, today, user.timezone, undefined, workspace.id);
   const todayRecurring = await calculateDailyRecurringXpBreakdown(
-    auth.user.id,
+    user.id,
     today,
-    auth.user.timezone,
+    user.timezone,
     todayScore,
     workspace.id
   );
@@ -40,9 +39,9 @@ export async function GET(req: Request) {
 
   for (let i = days - 1; i >= 0; i -= 1) {
     const d = subDays(now, i);
-    const date = formatDateInTimezone(d, auth.user.timezone);
+    const date = formatDateInTimezone(d, user.timezone);
     try {
-      const score = await calculateDailyScore(auth.user.id, date, auth.user.timezone, undefined, workspace.id);
+      const score = await calculateDailyScore(user.id, date, user.timezone, undefined, workspace.id);
       series.push({ date, score: score.scorePercent });
     } catch (error) {
       console.error("dashboard series score failed", { date, error });
@@ -51,7 +50,7 @@ export async function GET(req: Request) {
   }
 
   const xpEvents = await prisma.xPEvent.findMany({
-    where: { userId: auth.user.id, workspaceId: workspace.id }
+    where: { userId: user.id, workspaceId: workspace.id }
   });
   const totalXp = xpEvents.reduce((sum, e) => sum + e.xp, 0);
   const todayXpEvents = xpEvents.filter((event) => event.date.getTime() === todayUtc.getTime());
@@ -83,11 +82,11 @@ export async function GET(req: Request) {
         totalTodayXp: todayRecurring.recurringCapped + todayMilestoneXp
       },
       badges: await prisma.userBadge.findMany({
-        where: { userId: auth.user.id },
+        where: { userId: user.id },
         include: { badge: true }
       }),
       challenges: await prisma.userChallenge.findMany({
-        where: { userId: auth.user.id },
+        where: { userId: user.id },
         include: { challenge: true }
       })
     }

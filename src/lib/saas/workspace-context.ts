@@ -1,5 +1,6 @@
-import { WorkspaceStatus, WorkspaceType } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { requireWorkspaceContextFromUser } from "@/lib/saas/workspace-runtime";
+import { WorkspaceStatus, WorkspaceType } from "@prisma/client";
 
 export async function getCurrentWorkspaceForUser(userId: string) {
   return prisma.workspace.findFirst({
@@ -15,9 +16,9 @@ export async function getCurrentWorkspaceForUser(userId: string) {
 }
 
 export async function requireCurrentWorkspace(userId: string) {
-  const workspace = await getCurrentWorkspaceForUser(userId);
-  if (!workspace) {
-    throw new Error(`No active workspace found for user ${userId}`);
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new Error(`No user found for id ${userId}`);
   }
-  return workspace;
+  return (await requireWorkspaceContextFromUser(user)).workspace;
 }

@@ -1,14 +1,13 @@
-import { requireUser } from "@/lib/auth/guard";
 import { prisma } from "@/lib/db";
-import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
+import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 
 export async function GET() {
-  const auth = await requireUser();
-  if (!auth.ok) return auth.response;
-  const workspace = await requireCurrentWorkspace(auth.user.id);
+  const ctx = await requireWorkspaceContext();
+  if (!ctx.ok) return ctx.response;
+  const { user, workspace } = ctx.context;
 
   const habits = await prisma.habit.findMany({
-    where: { userId: auth.user.id, workspaceId: workspace.id },
+    where: { userId: user.id, workspaceId: workspace.id },
     orderBy: [{ isActive: "desc" }, { name: "asc" }]
   });
 
