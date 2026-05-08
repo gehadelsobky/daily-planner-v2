@@ -249,14 +249,26 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
           ) : (
             <>
               <Link
+                href="/"
+                className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
+              >
+                Home
+              </Link>
+              <Link
+                href="/pricing"
+                className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/pricing" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
+              >
+                Pricing
+              </Link>
+              <Link
                 href="/login"
-                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/login" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
               >
                 Login
               </Link>
               <Link
                 href="/register"
-                className="rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/register" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
               >
                 Register
               </Link>
