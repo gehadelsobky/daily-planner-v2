@@ -48,6 +48,8 @@ export async function POST(req: Request) {
         phoneCountry: phoneDetails.phoneCountry,
         phoneNumber: phoneDetails.phoneNumber,
         phoneE164: phoneDetails.phoneE164,
+        lastLoginAt: new Date(),
+        lastActiveAt: new Date(),
         scoreSettings: {
           create: {
             effectiveFrom: new Date(),

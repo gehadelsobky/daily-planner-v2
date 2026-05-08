@@ -79,6 +79,20 @@ enum BillingStatus {
   canceled
 }
 
+enum AccountStatus {
+  active
+  disabled
+  locked
+  pending_verification
+}
+
+enum OnboardingState {
+  not_started
+  profile_configured
+  habits_started
+  first_day_completed
+}
+
 model User {
   id                  String    @id @default(uuid())
   email               String    @unique
@@ -96,6 +110,12 @@ model User {
   waterDefaultTarget  Int?
   waterDefaultUnit    WaterUnit @default(cups)
   dailyLayout         Json      @default("[]")
+  emailVerifiedAt     DateTime?
+  lastLoginAt         DateTime?
+  lastActiveAt        DateTime?
+  accountStatus       AccountStatus    @default(active)
+  onboardingState     OnboardingState  @default(not_started)
+  onboardingCompletedAt DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -110,6 +130,8 @@ model User {
   workspaceMembers WorkspaceMember[]
 
   @@index([createdAt])
+  @@index([accountStatus, createdAt])
+  @@index([onboardingState, createdAt])
 }
 
 model Workspace {

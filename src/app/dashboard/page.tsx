@@ -33,6 +33,16 @@ type DashboardResponse = {
       enabled: boolean;
     }>;
   };
+  lifecycle: {
+    accountStatus: string;
+    emailVerifiedAt: string | null;
+    lastLoginAt: string | null;
+    lastActiveAt: string | null;
+    onboardingState: string;
+    onboardingCompletedAt: string | null;
+    onboardingProgressPercent: number;
+    nextRecommendedStep: string;
+  };
   series: Array<{ date: string; score: number }>;
   stats: { avgScore: number; bestDay: { date: string; score: number } };
   gamification: {
@@ -106,6 +116,10 @@ export default function DashboardPage() {
   const lockedFeatures = data?.workspace.lockedFeatures ?? [];
   const coreUpgradeFeatures = lockedFeatures.filter((feature) => feature.availableOn === "pro");
   const teamLockedFeature = lockedFeatures.find((feature) => feature.code === "team_workspaces");
+  const onboardingProgress = data?.lifecycle.onboardingProgressPercent ?? 0;
+  const onboardingStateLabel =
+    data?.lifecycle.onboardingState?.replaceAll("_", " ")?.replace(/\b\w/g, (char) => char.toUpperCase()) ??
+    "Not Started";
 
   const weeklyReview = useMemo(() => {
     const series = data?.series ?? [];
@@ -242,6 +256,62 @@ export default function DashboardPage() {
           <Progress value={levelProgress} className="h-3" />
           <p className="text-sm text-muted-foreground">Total XP: {data?.gamification.totalXp ?? 0}</p>
           <p className="text-xs text-muted-foreground">{habitUsageLabel} • Analytics window {data?.workspace.entitlements.analyticsWindowDays ?? 90} days</p>
+        </Card>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Onboarding Progress</h2>
+              <p className="text-sm text-muted-foreground">Your setup status as the SaaS experience becomes more guided.</p>
+            </div>
+            <Badge>{onboardingStateLabel}</Badge>
+          </div>
+          <Progress value={onboardingProgress} className="h-3" />
+          <p className="text-sm text-muted-foreground">{data?.lifecycle.nextRecommendedStep ?? "Keep setting up your planner."}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border/80 px-3 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Progress</p>
+              <p className="mt-1 text-2xl font-semibold">{onboardingProgress}%</p>
+            </div>
+            <div className="rounded-xl border border-border/80 px-3 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Completed</p>
+              <p className="mt-1 text-sm font-medium">
+                {data?.lifecycle.onboardingCompletedAt ? formatShortDate(data.lifecycle.onboardingCompletedAt) : "Not yet"}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">Account Lifecycle</h2>
+              <p className="text-sm text-muted-foreground">A simple operational view of account health and recent activity.</p>
+            </div>
+            <Badge>{data?.lifecycle.accountStatus ?? "active"}</Badge>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border/80 px-3 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Last login</p>
+              <p className="mt-1 text-sm font-medium">
+                {data?.lifecycle.lastLoginAt ? formatShortDate(data.lifecycle.lastLoginAt) : "Not recorded yet"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/80 px-3 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Last activity</p>
+              <p className="mt-1 text-sm font-medium">
+                {data?.lifecycle.lastActiveAt ? formatShortDate(data.lifecycle.lastActiveAt) : "Not recorded yet"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border/80 px-3 py-3 sm:col-span-2">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Email verification</p>
+              <p className="mt-1 text-sm font-medium">
+                {data?.lifecycle.emailVerifiedAt ? `Verified on ${formatShortDate(data.lifecycle.emailVerifiedAt)}` : "Pending verification layer"}
+              </p>
+            </div>
+          </div>
         </Card>
       </div>
 

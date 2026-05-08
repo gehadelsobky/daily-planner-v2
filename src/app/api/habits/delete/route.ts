@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey } from "@/lib/request";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 import { syncWorkspaceFeatureUsage } from "@/lib/saas/feature-usage";
+import { syncUserLifecycle, touchUserActivity } from "@/lib/saas/account-lifecycle";
 
 export async function DELETE(req: Request) {
   const ctx = await requireWorkspaceContext();
@@ -32,6 +33,8 @@ export async function DELETE(req: Request) {
   });
 
   await syncWorkspaceFeatureUsage(workspace.id);
+  await touchUserActivity(prisma, user.id);
+  await syncUserLifecycle(prisma, user.id);
 
   return Response.json({ success: true });
 }

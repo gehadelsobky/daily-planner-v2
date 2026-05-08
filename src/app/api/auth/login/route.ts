@@ -8,6 +8,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { todayInTimezone } from "@/lib/date";
 import { ensureCarryoverReminder } from "@/lib/notifications";
 import { buildRateLimitKey, getClientIp, getUserAgentFingerprint } from "@/lib/request";
+import { touchUserActivity } from "@/lib/saas/account-lifecycle";
 
 function getAppUrl(req: Request): string {
   return (
@@ -116,6 +117,8 @@ export async function POST(req: Request) {
       }
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
+
+    await touchUserActivity(prisma, user.id, { login: true });
 
     const token = await createSessionToken({ sub: user.id, email: user.email, ver: user.sessionVersion });
     await setSessionCookie(token);

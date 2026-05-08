@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { canCreateAnotherHabit } from "@/lib/saas/plans";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 import { syncWorkspaceFeatureUsage } from "@/lib/saas/feature-usage";
+import { syncUserLifecycle, touchUserActivity } from "@/lib/saas/account-lifecycle";
 
 export async function POST(req: Request) {
   const ctx = await requireWorkspaceContext();
@@ -43,6 +44,8 @@ export async function POST(req: Request) {
   });
 
   await syncWorkspaceFeatureUsage(workspace.id);
+  await touchUserActivity(prisma, user.id);
+  await syncUserLifecycle(prisma, user.id);
 
   return Response.json({ habit });
 }

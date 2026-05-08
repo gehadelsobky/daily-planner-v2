@@ -8,6 +8,7 @@ import {
 import bcrypt from "bcryptjs";
 import { DEFAULT_WEIGHTS } from "../src/lib/score/constants";
 import { ensurePersonalWorkspace } from "../src/lib/saas/personal-workspace";
+import { syncUserLifecycle } from "../src/lib/saas/account-lifecycle";
 
 const prisma = new PrismaClient();
 
@@ -73,7 +74,9 @@ async function main() {
       phoneE164: "+12025550182",
       timezone: "America/New_York",
       waterDefaultTarget: 8,
-      waterDefaultUnit: WaterUnit.cups
+      waterDefaultUnit: WaterUnit.cups,
+      lastLoginAt: new Date(),
+      lastActiveAt: new Date()
     },
     create: {
       email: DEMO_EMAIL,
@@ -84,7 +87,9 @@ async function main() {
       phoneE164: "+12025550182",
       timezone: "America/New_York",
       waterDefaultTarget: 8,
-      waterDefaultUnit: WaterUnit.cups
+      waterDefaultUnit: WaterUnit.cups,
+      lastLoginAt: new Date(),
+      lastActiveAt: new Date()
     }
   });
 
@@ -364,6 +369,8 @@ async function main() {
       endDate: new Date("2026-12-31T23:59:59.999Z")
     }
   });
+
+  await syncUserLifecycle(prisma, user.id);
 
   console.log(`Seed completed. Demo data generated for ${days.length} days (Jan/Feb 2026).`);
 }

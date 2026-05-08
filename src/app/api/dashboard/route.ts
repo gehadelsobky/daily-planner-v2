@@ -6,6 +6,7 @@ import { formatDateInTimezone, toDateOnlyUtc } from "@/lib/date";
 import { calculateDailyScore } from "@/lib/score/service";
 import { levelFromXp } from "@/lib/gamification";
 import { calculateDailyRecurringXpBreakdown } from "@/lib/gamification/xp";
+import { buildLifecycleSnapshot } from "@/lib/saas/account-lifecycle";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 import { getLockedFeatureStatuses } from "@/lib/saas/plans";
@@ -79,6 +80,7 @@ export async function GET(req: Request) {
       entitlements,
       lockedFeatures: getLockedFeatureStatuses(entitlements)
     },
+    lifecycle: buildLifecycleSnapshot(user),
     series,
     stats: {
       avgScore: Math.round(series.reduce((sum, d) => sum + d.score, 0) / series.length),

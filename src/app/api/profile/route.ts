@@ -4,6 +4,7 @@ import { profileUpdateSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/db";
 import { isValidTimezone } from "@/lib/date";
 import { normalizePhoneDetails } from "@/lib/phone";
+import { buildLifecycleSnapshot, syncUserLifecycle, touchUserActivity } from "@/lib/saas/account-lifecycle";
 import { requireWorkspaceContextFromUser } from "@/lib/saas/workspace-runtime";
 import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 import { getLockedFeatureStatuses } from "@/lib/saas/plans";
@@ -33,7 +34,8 @@ export async function GET() {
       weekStartDay: auth.user.weekStartDay,
       waterDefaultTarget: auth.user.waterDefaultTarget,
       waterDefaultUnit: auth.user.waterDefaultUnit,
-      dailyLayout: asStringArray(auth.user.dailyLayout)
+      dailyLayout: asStringArray(auth.user.dailyLayout),
+      lifecycle: buildLifecycleSnapshot(auth.user)
     },
     workspace: {
       id: workspaceContext.workspace.id,
@@ -96,6 +98,9 @@ export async function PATCH(req: Request) {
     }
   });
 
+  await touchUserActivity(prisma, auth.user.id);
+  const lifecycle = await syncUserLifecycle(prisma, auth.user.id);
+
   return Response.json({
     profile: {
       id: updated.id,
@@ -109,7 +114,8 @@ export async function PATCH(req: Request) {
       weekStartDay: updated.weekStartDay,
       waterDefaultTarget: updated.waterDefaultTarget,
       waterDefaultUnit: updated.waterDefaultUnit,
-      dailyLayout: asStringArray(updated.dailyLayout)
+      dailyLayout: asStringArray(updated.dailyLayout),
+      lifecycle
     }
   });
 }

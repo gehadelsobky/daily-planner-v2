@@ -59,6 +59,16 @@ type ProfileResponse = {
     weekStartDay: number;
     waterDefaultTarget: number | null;
     waterDefaultUnit: WaterUnit;
+    lifecycle: {
+      accountStatus: string;
+      emailVerifiedAt: string | null;
+      lastLoginAt: string | null;
+      lastActiveAt: string | null;
+      onboardingState: string;
+      onboardingCompletedAt: string | null;
+      onboardingProgressPercent: number;
+      nextRecommendedStep: string;
+    };
   };
   workspace: {
     id: string;
@@ -323,6 +333,10 @@ export default function SettingsPage() {
   const phoneDisplay = profilePhoneNumber
     ? `${selectedProfileCountry.flag} ${selectedProfileCountry.dialCode} ${profilePhoneNumber}`
     : "No phone added yet";
+  const lifecycle = profile.data?.profile.lifecycle;
+  const onboardingStateLabel = lifecycle?.onboardingState
+    ?.replaceAll("_", " ")
+    ?.replace(/\b\w/g, (char) => char.toUpperCase());
 
   const saveHabitName = (habitId: string) => {
     const nextName = (habitEditNames[habitId] ?? "").trim();
@@ -424,6 +438,37 @@ export default function SettingsPage() {
                       <span className="font-medium">
                         {profileWaterTarget === "" ? "Not set" : `${profileWaterTarget} ${profileWaterUnit}`}
                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3 sm:col-span-2 xl:col-span-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Onboarding & lifecycle</p>
+                      <p className="mt-1 text-base font-semibold text-[hsl(var(--foreground))]">
+                        {onboardingStateLabel ?? "Not Started"}
+                      </p>
+                    </div>
+                    <Badge className="bg-white/85 text-foreground shadow-none">
+                      {lifecycle?.onboardingProgressPercent ?? 0}% ready
+                    </Badge>
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {lifecycle?.nextRecommendedStep ?? "Keep shaping your planner defaults and first routines."}
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-border/80 px-3 py-3">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Account status</p>
+                      <p className="mt-1 text-sm font-medium">{lifecycle?.accountStatus ?? "active"}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/80 px-3 py-3">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Last login</p>
+                      <p className="mt-1 text-sm font-medium">{lifecycle?.lastLoginAt ? new Date(lifecycle.lastLoginAt).toLocaleDateString() : "Not recorded yet"}</p>
+                    </div>
+                    <div className="rounded-xl border border-border/80 px-3 py-3">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Last activity</p>
+                      <p className="mt-1 text-sm font-medium">{lifecycle?.lastActiveAt ? new Date(lifecycle.lastActiveAt).toLocaleDateString() : "Not recorded yet"}</p>
                     </div>
                   </div>
                 </div>

@@ -10,6 +10,7 @@ import { calculateDailyScore } from "@/lib/score/service";
 import { computeDayStatus } from "@/lib/daily/day-status";
 import { buildRateLimitKey } from "@/lib/request";
 import { requireCurrentWorkspace } from "@/lib/saas/workspace-context";
+import { syncUserLifecycle, touchUserActivity } from "@/lib/saas/account-lifecycle";
 
 export async function POST(req: Request) {
   const auth = await requireUser();
@@ -164,6 +165,8 @@ export async function POST(req: Request) {
     topWinsCount: Array.isArray(result.entry.topWinsItems) ? result.entry.topWinsItems.length : 0,
     quoteCount: Array.isArray(result.entry.quoteItems) ? result.entry.quoteItems.length : 0
   });
+  await touchUserActivity(prisma, auth.user.id);
+  await syncUserLifecycle(prisma, auth.user.id);
 
   return NextResponse.json({
     ok: true,
