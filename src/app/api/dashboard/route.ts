@@ -8,6 +8,7 @@ import { levelFromXp } from "@/lib/gamification";
 import { calculateDailyRecurringXpBreakdown } from "@/lib/gamification/xp";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
+import { getLockedFeatureStatuses } from "@/lib/saas/plans";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
@@ -75,7 +76,8 @@ export async function GET(req: Request) {
       planCode,
       billingStatus: subscription.billingStatus,
       usage,
-      entitlements
+      entitlements,
+      lockedFeatures: getLockedFeatureStatuses(entitlements)
     },
     series,
     stats: {

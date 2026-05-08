@@ -25,6 +25,13 @@ type DashboardResponse = {
       canUseMonthlyReview: boolean;
       canUseTeamFeatures: boolean;
     };
+    lockedFeatures: Array<{
+      code: string;
+      title: string;
+      description: string;
+      availableOn: string;
+      enabled: boolean;
+    }>;
   };
   series: Array<{ date: string; score: number }>;
   stats: { avgScore: number; bestDay: { date: string; score: number } };
@@ -96,6 +103,9 @@ export default function DashboardPage() {
       ? `${data.workspace.usage.habitsCount} habits in use`
       : `${data.workspace.usage.habitsCount}/${data.workspace.entitlements.maxHabits} habits used`
     : "0 habits used";
+  const lockedFeatures = data?.workspace.lockedFeatures ?? [];
+  const coreUpgradeFeatures = lockedFeatures.filter((feature) => feature.availableOn === "pro");
+  const teamLockedFeature = lockedFeatures.find((feature) => feature.code === "team_workspaces");
 
   const weeklyReview = useMemo(() => {
     const series = data?.series ?? [];
@@ -234,6 +244,63 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-foreground">{habitUsageLabel} • Analytics window {data?.workspace.entitlements.analyticsWindowDays ?? 90} days</p>
         </Card>
       </div>
+
+      {lockedFeatures.length ? (
+        <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+          <Card className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Unlock Next On Pro</h2>
+                <p className="text-sm text-muted-foreground">
+                  Your free workspace already covers the core planner. These upgrades deepen insight and automation.
+                </p>
+              </div>
+              <Badge>Pro path</Badge>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {coreUpgradeFeatures.map((feature) => (
+                <div key={feature.code} className="rounded-2xl border border-border bg-white/80 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium">{feature.title}</p>
+                    <Badge className="bg-[rgba(23,69,199,0.08)] text-[#1745C7] shadow-none">
+                      {feature.availableOn.toUpperCase()}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {teamLockedFeature ? (
+            <Card className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">Team Workspace Readiness</h2>
+                  <p className="text-sm text-muted-foreground">
+                    The SaaS foundation is ready for collaboration. Team capabilities stay off until the team plan is enabled.
+                  </p>
+                </div>
+                <Badge>Team</Badge>
+              </div>
+              <div className="rounded-2xl border border-border bg-white/80 p-4">
+                <p className="font-medium">{teamLockedFeature.title}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{teamLockedFeature.description}</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border/80 px-3 py-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Current members</p>
+                    <p className="mt-1 text-2xl font-semibold">{data?.workspace.usage.teamMembersCount ?? 1}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/80 px-3 py-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Current plan</p>
+                    <p className="mt-1 text-2xl font-semibold">{workspacePlan}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
 
       {range === "week" ? (
         <Card className="space-y-4">

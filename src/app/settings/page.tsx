@@ -79,6 +79,13 @@ type ProfileResponse = {
       teamMembersCount: number;
       periodKey: string;
     };
+    lockedFeatures: Array<{
+      code: string;
+      title: string;
+      description: string;
+      availableOn: string;
+      enabled: boolean;
+    }>;
   };
 };
 
@@ -300,6 +307,7 @@ export default function SettingsPage() {
   const workspacePlan = profile.data?.workspace?.planCode?.toUpperCase() ?? "FREE";
   const workspaceUsage = profile.data?.workspace?.usage;
   const workspaceEntitlements = profile.data?.workspace?.entitlements;
+  const lockedFeatures = profile.data?.workspace?.lockedFeatures ?? [];
   const habitLimitLabel = workspaceEntitlements
     ? workspaceEntitlements.maxHabits === "unlimited"
       ? `${workspaceUsage?.habitsCount ?? 0} habits in use`
@@ -497,6 +505,36 @@ export default function SettingsPage() {
           </div>
         ) : null}
       </Card>
+
+      {lockedFeatures.length ? (
+        <Card className="space-y-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Plan boundaries</p>
+                <h2 className="text-2xl font-semibold">What unlocks next</h2>
+              </div>
+              <Badge>{workspacePlan} plan</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Your current plan keeps the core planner open. These capabilities are already mapped in the SaaS layer and will unlock as the product expands.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {lockedFeatures.map((feature) => (
+              <div key={feature.code} className="rounded-2xl border border-border bg-white/85 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-[hsl(var(--foreground))]">{feature.title}</p>
+                  <Badge className="bg-[rgba(23,69,199,0.08)] text-[#1745C7] shadow-none">
+                    {feature.availableOn.toUpperCase()}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="space-y-4">
         <div className="space-y-2">

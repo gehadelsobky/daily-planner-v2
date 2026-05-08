@@ -6,6 +6,7 @@ import { isValidTimezone } from "@/lib/date";
 import { normalizePhoneDetails } from "@/lib/phone";
 import { requireWorkspaceContextFromUser } from "@/lib/saas/workspace-runtime";
 import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
+import { getLockedFeatureStatuses } from "@/lib/saas/plans";
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -40,7 +41,8 @@ export async function GET() {
       planCode: workspaceContext.planCode,
       billingStatus: workspaceContext.subscription.billingStatus,
       entitlements: workspaceContext.entitlements,
-      usage
+      usage,
+      lockedFeatures: getLockedFeatureStatuses(workspaceContext.entitlements)
     }
   });
 }
