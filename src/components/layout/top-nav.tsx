@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Bell } from "lucide-react";
+import { Bell, ChevronsUpDown } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -146,6 +146,10 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
                   {workspaceUsageLabel ? (
                     <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspaceUsageLabel}</Badge>
                   ) : null}
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[hsl(var(--border))] bg-white px-3 py-2 text-xs font-medium text-[hsl(var(--muted-foreground))] shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
+                    <ChevronsUpDown className="h-3.5 w-3.5" />
+                    Workspace switcher soon
+                  </span>
                 </div>
               ) : null}
               <Link

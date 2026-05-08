@@ -246,3 +246,7 @@ export const profileUpdateSchema = z
       }
     }
   });
+
+export const workspaceUpdateSchema = z.object({
+  name: z.string().min(2).max(80)
+});

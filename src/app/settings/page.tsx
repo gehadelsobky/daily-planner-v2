@@ -103,12 +103,40 @@ type ProfileResponse = {
   };
 };
 
+type WorkspaceMembersResponse = {
+  workspace: {
+    id: string;
+    name: string;
+    planCode: string;
+    type: string;
+  };
+  capabilities: {
+    canInviteMembers: boolean;
+    canManageRoles: boolean;
+    maxMembers: number;
+    currentMembers: number;
+    nextUnlockPlan: string;
+  };
+  members: Array<{
+    id: string;
+    userId: string;
+    name: string;
+    email: string;
+    avatarUrl: string | null;
+    role: string;
+    status: string;
+    joinedAt: string;
+    isCurrentUser: boolean;
+  }>;
+};
+
 export default function SettingsPage() {
   const form = useForm<ScoreFormValues>({ resolver: zodResolver(scoreSchema) });
   const queryClient = useQueryClient();
 
   const [weightsFeedback, setWeightsFeedback] = useState<string | null>(null);
   const [profileFeedback, setProfileFeedback] = useState<string | null>(null);
+  const [workspaceFeedback, setWorkspaceFeedback] = useState<string | null>(null);
 
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
@@ -118,6 +146,7 @@ export default function SettingsPage() {
   const [profileWeekStartDay, setProfileWeekStartDay] = useState(1);
   const [profileWaterTarget, setProfileWaterTarget] = useState<number | "">("");
   const [profileWaterUnit, setProfileWaterUnit] = useState<WaterUnit>("cups");
+  const [workspaceNameDraft, setWorkspaceNameDraft] = useState("");
 
   const [habitName, setHabitName] = useState("");
   const [habitFrequency, setHabitFrequency] = useState<HabitFrequency>("daily");
@@ -145,6 +174,11 @@ export default function SettingsPage() {
     queryFn: () => apiFetch<ProfileResponse>("/api/profile")
   });
 
+  const workspaceMembers = useQuery({
+    queryKey: ["workspace-members"],
+    queryFn: () => apiFetch<WorkspaceMembersResponse>("/api/workspace/members")
+  });
+
   useEffect(() => {
     if (!settings.data?.current) return;
     form.reset({
@@ -168,6 +202,11 @@ export default function SettingsPage() {
     setProfileWaterTarget(profile.data.profile.waterDefaultTarget ?? "");
     setProfileWaterUnit(profile.data.profile.waterDefaultUnit ?? "cups");
   }, [profile.data]);
+
+  useEffect(() => {
+    if (!profile.data?.workspace?.name) return;
+    setWorkspaceNameDraft(profile.data.workspace.name);
+  }, [profile.data?.workspace?.name]);
 
   useEffect(() => {
     if (!habits.data?.habits?.length) return;
@@ -260,6 +299,26 @@ export default function SettingsPage() {
     }
   });
 
+  const saveWorkspace = useMutation({
+    mutationFn: () =>
+      apiFetch("/api/workspace", {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: workspaceNameDraft
+        })
+      }),
+    onSuccess: async () => {
+      setWorkspaceFeedback("Workspace name saved.");
+      await queryClient.invalidateQueries({ queryKey: ["profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["workspace-profile-summary"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "week"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard", "month"] });
+    },
+    onError: (error) => {
+      setWorkspaceFeedback(error instanceof Error ? error.message : "Failed to save workspace name.");
+    }
+  });
+
   const updateHabit = useMutation({
     mutationFn: (payload: {
       habit_id: string;
@@ -348,6 +407,8 @@ export default function SettingsPage() {
     ? `${selectedProfileCountry.flag} ${selectedProfileCountry.dialCode} ${profilePhoneNumber}`
     : "No phone added yet";
   const lifecycle = profile.data?.profile.lifecycle;
+  const workspaceMembersData = workspaceMembers.data?.members ?? [];
+  const workspaceCapabilities = workspaceMembers.data?.capabilities;
   const onboardingStateLabel = lifecycle?.onboardingState
     ?.replaceAll("_", " ")
     ?.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -525,6 +586,27 @@ export default function SettingsPage() {
                 <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspaceStatusLabel}</Badge>
               </div>
             </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+              <label className="space-y-1 text-sm">
+                <span className="text-muted-foreground">Workspace name</span>
+                <Input
+                  value={workspaceNameDraft}
+                  onChange={(e) => setWorkspaceNameDraft(e.target.value)}
+                  placeholder="Workspace name"
+                />
+              </label>
+              <div className="flex items-end">
+                <Button
+                  onClick={() => {
+                    setWorkspaceFeedback(null);
+                    saveWorkspace.mutate();
+                  }}
+                  disabled={saveWorkspace.isPending || workspaceNameDraft.trim().length < 2}
+                >
+                  {saveWorkspace.isPending ? "Saving..." : "Save workspace"}
+                </Button>
+              </div>
+            </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-border/80 px-4 py-3">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Role</p>
@@ -543,6 +625,11 @@ export default function SettingsPage() {
                 <p className="mt-1 text-sm font-semibold">{workspaceEntitlements?.analyticsWindowDays ?? 90} days</p>
               </div>
             </div>
+            {workspaceFeedback ? (
+              <div className="mt-4 rounded-2xl border border-border bg-white/80 px-4 py-3 text-sm text-muted-foreground">
+                {workspaceFeedback}
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(248,251,255,0.95),rgba(255,255,255,0.92))] p-5">
@@ -561,6 +648,83 @@ export default function SettingsPage() {
                 <p className="mt-1 text-sm font-semibold">Invites, member roles, and workspace collaboration</p>
               </div>
             </div>
+          </div>
+        </div>
+        <div className="rounded-[1.5rem] border border-border bg-white/80 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Members</p>
+              <h3 className="mt-2 text-xl font-semibold text-[hsl(var(--foreground))]">Workspace members</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Today this workspace is personal, but this section is now ready to grow into team access, invites, and role-based collaboration.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                {workspaceCapabilities?.currentMembers ?? workspaceUsage?.teamMembersCount ?? 1} member
+                {(workspaceCapabilities?.currentMembers ?? workspaceUsage?.teamMembersCount ?? 1) === 1 ? "" : "s"}
+              </Badge>
+              <Badge>{workspacePlan} plan</Badge>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {workspaceMembersData.map((member) => {
+              const initials = member.name
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((part) => part[0]?.toUpperCase())
+                .join("");
+
+              return (
+                <div
+                  key={member.id}
+                  className="flex flex-col gap-4 rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,250,255,0.92))] px-4 py-4 lg:flex-row lg:items-center lg:justify-between"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#1745C7,#00b0ff)] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(23,69,199,0.18)]">
+                      {initials || "DP"}
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-base font-semibold text-[hsl(var(--foreground))]">{member.name}</p>
+                        {member.isCurrentUser ? (
+                          <Badge className="bg-[rgba(31,217,181,0.14)] text-[#0a0087] shadow-none">You</Badge>
+                        ) : null}
+                        <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none capitalize">
+                          {member.role.replaceAll("_", " ")}
+                        </Badge>
+                        <Badge className="bg-white text-muted-foreground shadow-none capitalize">
+                          {member.status.replaceAll("_", " ")}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">{member.email}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Joined {new Date(member.joinedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" disabled className="opacity-100">
+                      Role editing on Team
+                    </Button>
+                    <Button variant="secondary" disabled className="opacity-100">
+                      Member actions on Team
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
+              Team invitations are not active on the {workspacePlan} plan yet. When Team is enabled, you will be able to invite members, assign roles, and share planning workflows from here.
+            </div>
+            <Button disabled className="opacity-100">
+              Invite members on {workspaceCapabilities?.nextUnlockPlan?.toUpperCase() ?? "TEAM"}
+            </Button>
           </div>
         </div>
       </Card>

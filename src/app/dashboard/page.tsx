@@ -13,6 +13,8 @@ type DashboardResponse = {
   workspace: {
     id: string;
     name: string;
+    type: string;
+    status: string;
     planCode: string;
     billingStatus: string;
     usage: { habitsCount: number; teamMembersCount: number; periodKey: string };
@@ -108,6 +110,10 @@ export default function DashboardPage() {
     ? (data.gamification.currentLevelXp / data.gamification.nextLevelXp) * 100
     : 0;
   const workspacePlan = data?.workspace.planCode?.toUpperCase() ?? "FREE";
+  const workspaceType = data?.workspace.type
+    ? `${data.workspace.type.charAt(0).toUpperCase()}${data.workspace.type.slice(1)}`
+    : "Personal";
+  const workspaceName = data?.workspace.name ?? "Personal workspace";
   const habitUsageLabel = data?.workspace
     ? data.workspace.entitlements.maxHabits === "unlimited"
       ? `${data.workspace.usage.habitsCount} habits in use`
@@ -258,6 +264,45 @@ export default function DashboardPage() {
           <p className="text-xs text-muted-foreground">{habitUsageLabel} • Analytics window {data?.workspace.entitlements.analyticsWindowDays ?? 90} days</p>
         </Card>
       </div>
+
+      <Card className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace overview</p>
+            <h2 className="mt-2 text-2xl font-semibold">{workspaceName}</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your daily planning system now lives inside a workspace model that is ready for future collaboration.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Badge className="bg-[rgba(31,217,181,0.14)] text-[#0a0087] shadow-none">{workspaceType}</Badge>
+            <Badge>{workspacePlan} plan</Badge>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{data?.workspace.status ?? "active"}</Badge>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Workspace members</p>
+            <p className="mt-2 text-2xl font-semibold">{data?.workspace.usage.teamMembersCount ?? 1}</p>
+            <p className="mt-2 text-xs text-muted-foreground">Single-owner now, team-ready next.</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Habits usage</p>
+            <p className="mt-2 text-2xl font-semibold">{data?.workspace.usage.habitsCount ?? 0}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{habitUsageLabel}</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Analytics window</p>
+            <p className="mt-2 text-2xl font-semibold">{data?.workspace.entitlements.analyticsWindowDays ?? 90}</p>
+            <p className="mt-2 text-xs text-muted-foreground">Days available on your current plan.</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-white/80 px-4 py-4">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Switcher readiness</p>
+            <p className="mt-2 text-2xl font-semibold">Ready</p>
+            <p className="mt-2 text-xs text-muted-foreground">The next workspace switcher can fit here without reworking the layout.</p>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
         <Card className="space-y-4">
