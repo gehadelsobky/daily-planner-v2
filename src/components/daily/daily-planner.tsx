@@ -254,10 +254,12 @@ function formatOnboardingStateLabel(state: ProfileLifecycle["onboardingState"] |
 
 export function DailyPlannerClient({
   initialDate,
-  initialLayout
+  initialLayout,
+  showWelcomeActivation = false
 }: {
   initialDate: string;
   initialLayout?: string[];
+  showWelcomeActivation?: boolean;
 }) {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [taskTitle, setTaskTitle] = useState("");
@@ -287,6 +289,7 @@ export function DailyPlannerClient({
   const [sectionOrder, setSectionOrder] = useState<SectionId[]>(
     sanitizeSectionOrder(initialLayout ?? [])
   );
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const qc = useQueryClient();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -767,6 +770,11 @@ export function DailyPlannerClient({
   ];
   const lifecycle = profile.data?.profile?.lifecycle;
   const showOnboardingCard = isToday && (lifecycle?.onboardingProgressPercent ?? 100) < 100;
+  const showActivationWelcome =
+    isToday &&
+    showWelcomeActivation &&
+    !welcomeDismissed &&
+    (lifecycle?.onboardingProgressPercent ?? 100) < 100;
   const onboardingStateLabel = formatOnboardingStateLabel(lifecycle?.onboardingState);
   const onboardingMilestones = [
     {
@@ -1837,6 +1845,36 @@ export function DailyPlannerClient({
           </div>
         </div>
       </Card>
+
+      {showActivationWelcome ? (
+        <Card className="space-y-4 border-[hsl(var(--primary)/0.22)] bg-[linear-gradient(135deg,rgba(23,69,199,0.08),rgba(0,176,255,0.06),rgba(31,217,181,0.08))]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Welcome To Your Planner</p>
+                <Badge className="bg-white/90 text-[hsl(var(--foreground))] shadow-none">First setup</Badge>
+              </div>
+              <h2 className="text-2xl font-semibold tracking-tight">Your account is ready. Let&apos;s make the planner useful in the next two minutes.</h2>
+              <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                Start with the next recommended setup step so your daily page reflects your real routine from the first day.
+              </p>
+            </div>
+            <div className="rounded-[1.2rem] border border-border bg-white/88 px-4 py-3 text-center shadow-[0_10px_22px_rgba(15,23,42,0.05)]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Activation</p>
+              <p className="mt-2 text-2xl font-semibold text-[hsl(var(--foreground))]">{lifecycle?.onboardingProgressPercent ?? 0}% ready</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handlePrimaryOnboardingAction}>{primaryOnboardingLabel}</Button>
+            <Button variant="secondary" onClick={handleSecondaryOnboardingAction}>
+              {secondaryOnboardingLabel}
+            </Button>
+            <Button variant="ghost" onClick={() => setWelcomeDismissed(true)}>
+              I&apos;ll do this later
+            </Button>
+          </div>
+        </Card>
+      ) : null}
 
       {showOnboardingCard ? (
         <Card className="space-y-5 border-[hsl(var(--border)/0.92)] bg-[linear-gradient(135deg,rgba(23,69,199,0.05),rgba(0,176,255,0.04),rgba(31,217,181,0.06))]">

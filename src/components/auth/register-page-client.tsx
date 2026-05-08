@@ -51,7 +51,7 @@ export default function RegisterPageClient({ forgotEnabled }: { forgotEnabled: b
         method: "POST",
         body: JSON.stringify(values)
       });
-      router.push("/daily");
+      router.push("/daily?welcome=1");
       router.refresh();
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Registration failed");
