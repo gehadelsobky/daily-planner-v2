@@ -116,6 +116,19 @@ type DailyResponse = {
   };
 };
 
+type ProfileLifecycle = {
+  onboardingState: "not_started" | "profile_configured" | "habits_started" | "first_day_completed";
+  onboardingProgressPercent: number;
+  nextRecommendedStep: string;
+};
+
+type ProfileResponse = {
+  profile: {
+    dailyLayout?: string[];
+    lifecycle?: ProfileLifecycle;
+  };
+};
+
 type EditableSection = "task" | "gratitude" | "top_win" | "quote" | "grow";
 type ActiveEditor = { section: EditableSection; id: string; value: string } | null;
 type CloseAction = "carry_to_tomorrow" | "dismiss";
@@ -234,6 +247,11 @@ function formatDayStatusLabel(
   return status.replaceAll("_", " ");
 }
 
+function formatOnboardingStateLabel(state: ProfileLifecycle["onboardingState"] | undefined) {
+  if (!state) return "Not started";
+  return state.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export function DailyPlannerClient({
   initialDate,
   initialLayout
@@ -295,7 +313,7 @@ export function DailyPlannerClient({
   const profile = useQuery({
     queryKey: ["profile"],
     queryFn: () =>
-      apiFetch<{ profile: { dailyLayout?: string[] } }>("/api/profile")
+      apiFetch<ProfileResponse>("/api/profile")
   });
   const savedSectionOrder = useMemo(
     () => sanitizeSectionOrder(profile.data?.profile?.dailyLayout ?? initialLayout ?? []),
@@ -747,6 +765,23 @@ export function DailyPlannerClient({
     `${reviewSummary.totalTasks} planned task${reviewSummary.totalTasks === 1 ? "" : "s"}`,
     reviewSummary.waterMet ? "Water target met" : `Water target ${effectiveWaterTarget} ${effectiveWaterUnit}`
   ];
+  const lifecycle = profile.data?.profile?.lifecycle;
+  const showOnboardingCard = isToday && (lifecycle?.onboardingProgressPercent ?? 100) < 100;
+  const onboardingStateLabel = formatOnboardingStateLabel(lifecycle?.onboardingState);
+  const onboardingMilestones = [
+    {
+      label: "Profile defaults",
+      done: (lifecycle?.onboardingState ?? "not_started") !== "not_started"
+    },
+    {
+      label: "First habit added",
+      done: ["habits_started", "first_day_completed"].includes(lifecycle?.onboardingState ?? "not_started")
+    },
+    {
+      label: "First day closed",
+      done: (lifecycle?.onboardingState ?? "not_started") === "first_day_completed"
+    }
+  ];
 
   useEffect(() => {
     if (!daily.data?.entry) return;
@@ -798,6 +833,61 @@ export function DailyPlannerClient({
       setSectionOrder(nextOrder);
     }
   }, [profile.data?.profile?.dailyLayout]);
+
+  const openSettingsAnchor = (hash: string) => {
+    window.location.href = `/settings${hash}`;
+  };
+
+  const focusTaskComposer = () => {
+    const taskInput = document.querySelector<HTMLInputElement>('input[placeholder="Add task"]');
+    taskInput?.focus();
+    taskInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handlePrimaryOnboardingAction = () => {
+    switch (lifecycle?.onboardingState) {
+      case "not_started":
+        openSettingsAnchor("#profile-settings");
+        break;
+      case "profile_configured":
+        openSettingsAnchor("#habits-list");
+        break;
+      case "habits_started":
+        setIsReviewOpen(true);
+        break;
+      default:
+        focusTaskComposer();
+    }
+  };
+
+  const handleSecondaryOnboardingAction = () => {
+    switch (lifecycle?.onboardingState) {
+      case "not_started":
+      case "profile_configured":
+        focusTaskComposer();
+        break;
+      case "habits_started": {
+        const growInput = document.querySelector<HTMLInputElement>('input[placeholder="What did you learn today?"]');
+        growInput?.focus();
+        growInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+  const primaryOnboardingLabel =
+    lifecycle?.onboardingState === "not_started"
+      ? "Set Profile Defaults"
+      : lifecycle?.onboardingState === "profile_configured"
+        ? "Create First Habit"
+        : lifecycle?.onboardingState === "habits_started"
+          ? "Close Your First Day"
+          : "Continue Setup";
+
+  const secondaryOnboardingLabel =
+    lifecycle?.onboardingState === "habits_started" ? "Add A Grow Daily Note" : "Add First Task";
 
   const renderSection = (id: SectionId, dragHandle?: ReactNode) => {
     const sectionProps = {
@@ -1747,6 +1837,67 @@ export function DailyPlannerClient({
           </div>
         </div>
       </Card>
+
+      {showOnboardingCard ? (
+        <Card className="space-y-5 border-[hsl(var(--border)/0.92)] bg-[linear-gradient(135deg,rgba(23,69,199,0.05),rgba(0,176,255,0.04),rgba(31,217,181,0.06))]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Onboarding Focus</p>
+                <Badge className="bg-white/85 text-[hsl(var(--foreground))] shadow-none">{onboardingStateLabel}</Badge>
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold tracking-tight">Let&apos;s finish your planner setup with one clear next step</h2>
+                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                  {lifecycle?.nextRecommendedStep ?? "Complete the next setup step so your planner is ready for consistent daily use."}
+                </p>
+              </div>
+            </div>
+            <div className="min-w-[160px] rounded-[1.2rem] border border-border bg-white/85 px-4 py-3 text-center shadow-[0_10px_22px_rgba(15,23,42,0.05)]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Progress</p>
+              <p className="mt-2 text-3xl font-semibold text-[hsl(var(--foreground))]">{lifecycle?.onboardingProgressPercent ?? 0}%</p>
+            </div>
+          </div>
+
+          <Progress value={lifecycle?.onboardingProgressPercent ?? 0} className="h-3" />
+
+          <div className="grid gap-3 lg:grid-cols-[1.05fr,0.95fr]">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {onboardingMilestones.map((milestone) => (
+                <div
+                  key={milestone.label}
+                  className={`rounded-[1rem] border px-4 py-3 text-sm shadow-[0_8px_18px_rgba(15,23,42,0.04)] ${
+                    milestone.done
+                      ? "border-emerald-200 bg-emerald-50/90"
+                      : "border-border bg-white/88"
+                  }`}
+                >
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Milestone</p>
+                  <p className="mt-2 font-medium text-[hsl(var(--foreground))]">{milestone.label}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{milestone.done ? "Completed" : "Still to do"}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-[1.2rem] border border-border bg-white/88 p-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
+              <p className="text-sm font-semibold">Recommended next move</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {lifecycle?.onboardingState === "not_started"
+                  ? "Start by setting your timezone, week start, and water defaults so every day view matches your real routine."
+                  : lifecycle?.onboardingState === "profile_configured"
+                    ? "Your defaults are ready. Add at least one habit so the system can start tracking consistency."
+                    : "You already started your routines. Close your first day to complete onboarding and lock the habit loop in place."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button onClick={handlePrimaryOnboardingAction}>{primaryOnboardingLabel}</Button>
+                <Button variant="secondary" onClick={handleSecondaryOnboardingAction}>
+                  {secondaryOnboardingLabel}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <Card className="space-y-4 border-[hsl(var(--border)/0.92)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,250,255,0.95))]">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

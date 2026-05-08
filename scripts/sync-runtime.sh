@@ -6,6 +6,10 @@ RUNTIME_DIR="${DAILY_PLANNER_RUNTIME_DIR:-$HOME/apps/daily-planner-v2-runtime}"
 LAUNCH_AGENT_LABEL="${DAILY_PLANNER_LAUNCH_AGENT_LABEL:-com.gehad.daily-planner-v2}"
 APP_URL="${DAILY_PLANNER_APP_URL:-http://127.0.0.1:3000}"
 
+if [ -d "$HOME/.nvm/versions/node/v20.20.0/bin" ]; then
+  export PATH="$HOME/.nvm/versions/node/v20.20.0/bin:$PATH"
+fi
+
 echo "[1/7] Sync source into runtime copy"
 mkdir -p "$(dirname "$RUNTIME_DIR")"
 /usr/bin/rsync -a --delete \
@@ -19,6 +23,7 @@ mkdir -p "$(dirname "$RUNTIME_DIR")"
 cd "$RUNTIME_DIR"
 
 echo "[2/7] Install dependencies"
+npm run check:node
 npm install
 
 echo "[3/7] Prisma generate"

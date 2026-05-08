@@ -478,7 +478,7 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="space-y-4">
+      <Card id="profile-settings" className="space-y-4">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -581,7 +581,7 @@ export default function SettingsPage() {
         </Card>
       ) : null}
 
-      <Card className="space-y-4">
+      <Card id="habits-list" className="space-y-4">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Identity & defaults</p>
           <h2 className="text-2xl font-semibold">Profile Settings</h2>
