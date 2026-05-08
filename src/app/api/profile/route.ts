@@ -42,6 +42,10 @@ export async function GET() {
     workspace: {
       id: workspaceContext.workspace.id,
       name: workspaceContext.workspace.name,
+      type: workspaceContext.workspace.type,
+      status: workspaceContext.workspace.status,
+      membershipRole: workspaceContext.membership.role,
+      membershipStatus: workspaceContext.membership.status,
       planCode: workspaceContext.planCode,
       billingStatus: workspaceContext.subscription.billingStatus,
       entitlements: workspaceContext.entitlements,

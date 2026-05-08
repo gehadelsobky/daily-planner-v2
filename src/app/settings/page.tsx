@@ -73,6 +73,10 @@ type ProfileResponse = {
   workspace: {
     id: string;
     name: string;
+    type: string;
+    status: string;
+    membershipRole: string;
+    membershipStatus: string;
     planCode: string;
     billingStatus: string;
     entitlements: {
@@ -317,6 +321,16 @@ export default function SettingsPage() {
   const workspacePlan = profile.data?.workspace?.planCode?.toUpperCase() ?? "FREE";
   const workspaceUsage = profile.data?.workspace?.usage;
   const workspaceEntitlements = profile.data?.workspace?.entitlements;
+  const workspaceName = profile.data?.workspace?.name ?? "Personal workspace";
+  const workspaceTypeLabel = profile.data?.workspace?.type
+    ? `${profile.data.workspace.type.charAt(0).toUpperCase()}${profile.data.workspace.type.slice(1)}`
+    : "Personal";
+  const workspaceStatusLabel = profile.data?.workspace?.status
+    ? profile.data.workspace.status.replaceAll("_", " ")
+    : "active";
+  const membershipRoleLabel = profile.data?.workspace?.membershipRole
+    ? profile.data.workspace.membershipRole.replaceAll("_", " ")
+    : "owner";
   const lockedFeatures = profile.data?.workspace?.lockedFeatures ?? [];
   const habitLimitLabel = workspaceEntitlements
     ? workspaceEntitlements.maxHabits === "unlimited"
@@ -424,6 +438,14 @@ export default function SettingsPage() {
                   <p className="mt-2 text-xs text-muted-foreground">{habitLimitLabel}. Analytics window {workspaceEntitlements?.analyticsWindowDays ?? 90} days.</p>
                 </div>
 
+                <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Workspace</p>
+                  <p className="mt-1 text-base font-semibold text-[hsl(var(--foreground))]">{workspaceName}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {workspaceTypeLabel} workspace • {workspaceStatusLabel}
+                  </p>
+                </div>
+
                 <div className="rounded-2xl border border-border/80 bg-white/88 px-4 py-3 sm:col-span-2 xl:col-span-1">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Planner Defaults</p>
                   <div className="mt-2 space-y-2 text-sm">
@@ -478,7 +500,72 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card id="profile-settings" className="space-y-4">
+      <Card className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Workspace control</p>
+              <h2 className="text-2xl font-semibold">Workspace Settings</h2>
+            </div>
+            <Badge>{workspacePlan} plan</Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Your planner now runs inside a workspace. Team collaboration is not enabled yet, but this structure is ready for the next SaaS layer.
+          </p>
+        </div>
+        <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[1.5rem] border border-border bg-white/80 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Current workspace</p>
+                <h3 className="mt-2 text-xl font-semibold text-[hsl(var(--foreground))]">{workspaceName}</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge className="bg-[rgba(31,217,181,0.14)] text-[#0a0087] shadow-none">{workspaceTypeLabel}</Badge>
+                <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspaceStatusLabel}</Badge>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-border/80 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Role</p>
+                <p className="mt-1 text-sm font-semibold capitalize">{membershipRoleLabel}</p>
+              </div>
+              <div className="rounded-2xl border border-border/80 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Members</p>
+                <p className="mt-1 text-sm font-semibold">{workspaceUsage?.teamMembersCount ?? 1}</p>
+              </div>
+              <div className="rounded-2xl border border-border/80 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Habits in use</p>
+                <p className="mt-1 text-sm font-semibold">{habitLimitLabel}</p>
+              </div>
+              <div className="rounded-2xl border border-border/80 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Analytics window</p>
+                <p className="mt-1 text-sm font-semibold">{workspaceEntitlements?.analyticsWindowDays ?? 90} days</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-border bg-[linear-gradient(180deg,rgba(248,251,255,0.95),rgba(255,255,255,0.92))] p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Team readiness</p>
+            <h3 className="mt-2 text-xl font-semibold text-[hsl(var(--foreground))]">Members & collaboration</h3>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              This workspace is already modeled for team collaboration. Once the Team plan is enabled, invites, member roles, and shared reporting will appear here.
+            </p>
+            <div className="mt-5 space-y-3">
+              <div className="rounded-2xl border border-border/80 bg-white/85 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Current state</p>
+                <p className="mt-1 text-sm font-semibold">Single-owner personal workspace</p>
+              </div>
+              <div className="rounded-2xl border border-border/80 bg-white/85 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Next unlock</p>
+                <p className="mt-1 text-sm font-semibold">Invites, member roles, and workspace collaboration</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="space-y-4">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -581,7 +668,7 @@ export default function SettingsPage() {
         </Card>
       ) : null}
 
-      <Card id="habits-list" className="space-y-4">
+      <Card id="profile-settings" className="space-y-4">
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Identity & defaults</p>
           <h2 className="text-2xl font-semibold">Profile Settings</h2>
@@ -677,7 +764,7 @@ export default function SettingsPage() {
         ) : null}
       </Card>
 
-      <Card className="space-y-4">
+      <Card id="habits-list" className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Habit system</p>

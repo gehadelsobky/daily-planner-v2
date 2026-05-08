@@ -25,6 +25,8 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
           accessMode: "configured" | "local_fallback" | "none";
         };
         workspace: {
+          name: string;
+          type: string;
           planCode: string;
           usage: { habitsCount: number; teamMembersCount: number };
           entitlements: { maxHabits: number | "unlimited" };
@@ -95,6 +97,10 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
   });
 
   const workspacePlan = workspaceQuery.data?.workspace?.planCode?.toUpperCase() ?? null;
+  const workspaceType = workspaceQuery.data?.workspace?.type
+    ? `${workspaceQuery.data.workspace.type.charAt(0).toUpperCase()}${workspaceQuery.data.workspace.type.slice(1)} workspace`
+    : null;
+  const workspaceName = workspaceQuery.data?.workspace?.name ?? null;
   const isAdmin = workspaceQuery.data?.admin?.isAdmin ?? false;
   const workspaceUsage = workspaceQuery.data?.workspace?.usage;
   const workspaceHabitLimit = workspaceQuery.data?.workspace?.entitlements?.maxHabits;
@@ -128,6 +134,14 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
             <>
               {workspacePlan ? (
                 <div className="mr-1 flex flex-wrap items-center gap-2">
+                  {workspaceName ? (
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                      {workspaceName}
+                    </Badge>
+                  ) : null}
+                  {workspaceType ? (
+                    <Badge className="bg-[rgba(31,217,181,0.14)] text-[#0a0087] shadow-none">{workspaceType}</Badge>
+                  ) : null}
                   <Badge className="bg-[rgba(0,176,255,0.14)] text-[#1745C7] shadow-none">{workspacePlan} plan</Badge>
                   {workspaceUsageLabel ? (
                     <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspaceUsageLabel}</Badge>
