@@ -16,6 +16,19 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
 
+  const workspaceQuery = useQuery({
+    queryKey: ["workspace-profile-summary"],
+    queryFn: () =>
+      apiFetch<{
+        workspace: {
+          planCode: string;
+          usage: { habitsCount: number; teamMembersCount: number };
+          entitlements: { maxHabits: number | "unlimited" };
+        };
+      }>("/api/profile"),
+    enabled: loggedIn
+  });
+
   const notificationsQuery = useQuery({
     queryKey: ["top-notifications"],
     queryFn: () => apiFetch<{
@@ -77,6 +90,15 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
     }
   });
 
+  const workspacePlan = workspaceQuery.data?.workspace?.planCode?.toUpperCase() ?? null;
+  const workspaceUsage = workspaceQuery.data?.workspace?.usage;
+  const workspaceHabitLimit = workspaceQuery.data?.workspace?.entitlements?.maxHabits;
+  const workspaceUsageLabel = workspaceUsage
+    ? workspaceHabitLimit === "unlimited"
+      ? `${workspaceUsage.habitsCount} habits active`
+      : `${workspaceUsage.habitsCount}/${workspaceHabitLimit} habits`
+    : null;
+
   const logout = async () => {
     await apiFetch("/api/auth/logout", { method: "POST" });
     queryClient.clear();
@@ -99,6 +121,14 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
         <nav className="flex flex-wrap items-center gap-2 text-sm text-[hsl(var(--foreground))]">
           {loggedIn ? (
             <>
+              {workspacePlan ? (
+                <div className="mr-1 flex flex-wrap items-center gap-2">
+                  <Badge className="bg-[rgba(0,176,255,0.14)] text-[#1745C7] shadow-none">{workspacePlan} plan</Badge>
+                  {workspaceUsageLabel ? (
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspaceUsageLabel}</Badge>
+                  ) : null}
+                </div>
+              ) : null}
               <Link
                 href="/daily"
                 className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/daily" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}

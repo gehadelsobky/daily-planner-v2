@@ -10,6 +10,22 @@ import { Badge } from "@/components/ui/badge";
 
 type DashboardResponse = {
   range: "week" | "month";
+  workspace: {
+    id: string;
+    name: string;
+    planCode: string;
+    billingStatus: string;
+    usage: { habitsCount: number; teamMembersCount: number; periodKey: string };
+    entitlements: {
+      maxHabits: number | "unlimited";
+      analyticsWindowDays: number;
+      canUseAdvancedAnalytics: boolean;
+      canUseEmailReminders: boolean;
+      canExportData: boolean;
+      canUseMonthlyReview: boolean;
+      canUseTeamFeatures: boolean;
+    };
+  };
   series: Array<{ date: string; score: number }>;
   stats: { avgScore: number; bestDay: { date: string; score: number } };
   gamification: {
@@ -74,6 +90,13 @@ export default function DashboardPage() {
   const levelProgress = data
     ? (data.gamification.currentLevelXp / data.gamification.nextLevelXp) * 100
     : 0;
+  const workspacePlan = data?.workspace.planCode?.toUpperCase() ?? "FREE";
+  const habitUsageLabel = data?.workspace
+    ? data.workspace.entitlements.maxHabits === "unlimited"
+      ? `${data.workspace.usage.habitsCount} habits in use`
+      : `${data.workspace.usage.habitsCount}/${data.workspace.entitlements.maxHabits} habits used`
+    : "0 habits used";
+
   const weeklyReview = useMemo(() => {
     const series = data?.series ?? [];
     if (!series.length) {
@@ -147,7 +170,7 @@ export default function DashboardPage() {
               Review your momentum, XP growth, and consistency patterns so the next week becomes easier to plan.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Average</p>
               <p className="mt-1 text-2xl font-semibold">{data?.stats.avgScore ?? 0}%</p>
@@ -155,6 +178,11 @@ export default function DashboardPage() {
             <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Level</p>
               <p className="mt-1 text-2xl font-semibold">{data?.gamification.level ?? 1}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-white/80 px-4 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Plan</p>
+              <p className="mt-1 text-2xl font-semibold">{workspacePlan}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{habitUsageLabel}</p>
             </div>
           </div>
         </div>
@@ -196,10 +224,14 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="space-y-3">
-          <h2 className="font-semibold">Level & XP</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-semibold">Level & XP</h2>
+            <Badge>{workspacePlan}</Badge>
+          </div>
           <p className="text-2xl font-semibold">Level {data?.gamification.level ?? 1}</p>
           <Progress value={levelProgress} className="h-3" />
           <p className="text-sm text-muted-foreground">Total XP: {data?.gamification.totalXp ?? 0}</p>
+          <p className="text-xs text-muted-foreground">{habitUsageLabel} • Analytics window {data?.workspace.entitlements.analyticsWindowDays ?? 90} days</p>
         </Card>
       </div>
 
