@@ -20,6 +20,10 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
     queryKey: ["workspace-profile-summary"],
     queryFn: () =>
       apiFetch<{
+        admin?: {
+          isAdmin: boolean;
+          accessMode: "configured" | "local_fallback" | "none";
+        };
         workspace: {
           planCode: string;
           usage: { habitsCount: number; teamMembersCount: number };
@@ -91,6 +95,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
   });
 
   const workspacePlan = workspaceQuery.data?.workspace?.planCode?.toUpperCase() ?? null;
+  const isAdmin = workspaceQuery.data?.admin?.isAdmin ?? false;
   const workspaceUsage = workspaceQuery.data?.workspace?.usage;
   const workspaceHabitLimit = workspaceQuery.data?.workspace?.entitlements?.maxHabits;
   const workspaceUsageLabel = workspaceUsage
@@ -147,6 +152,14 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
               >
                 Settings
               </Link>
+              {isAdmin ? (
+                <Link
+                  href="/admin"
+                  className={`rounded-full border px-4 py-2 font-medium shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition ${pathname === "/admin" ? "border-[#00b0ff] bg-[rgba(0,176,255,0.08)] text-[#1745C7]" : "border-[hsl(var(--border))] bg-white hover:border-[#00b0ff] hover:text-[#1745C7]"}`}
+                >
+                  Admin
+                </Link>
+              ) : null}
               <div className="relative">
                 <Button
                   variant="secondary"

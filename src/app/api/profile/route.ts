@@ -8,6 +8,7 @@ import { buildLifecycleSnapshot, syncUserLifecycle, touchUserActivity } from "@/
 import { requireWorkspaceContextFromUser } from "@/lib/saas/workspace-runtime";
 import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 import { getLockedFeatureStatuses } from "@/lib/saas/plans";
+import { getAdminAccess } from "@/lib/admin/access";
 
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -37,6 +38,7 @@ export async function GET() {
       dailyLayout: asStringArray(auth.user.dailyLayout),
       lifecycle: buildLifecycleSnapshot(auth.user)
     },
+    admin: getAdminAccess(auth.user),
     workspace: {
       id: workspaceContext.workspace.id,
       name: workspaceContext.workspace.name,
