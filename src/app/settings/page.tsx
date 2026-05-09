@@ -411,6 +411,21 @@ export default function SettingsPage() {
   const workspaceMembersData = workspaceMembers.data?.members ?? [];
   const workspaceCapabilities = workspaceMembers.data?.capabilities;
   const teamLockedFeature = lockedFeatures.find((feature) => feature.code === "team_workspaces");
+  const teamInterestHref = useMemo(() => {
+    const subject = encodeURIComponent(`Daily Planner Team interest - ${workspaceName}`);
+    const body = encodeURIComponent(
+      [
+        `Workspace: ${workspaceName}`,
+        `Plan: ${workspacePlan}`,
+        `Current members: ${workspaceCapabilities?.currentMembers ?? workspaceUsage?.teamMembersCount ?? 1}`,
+        "",
+        "We want to use Daily Planner as a team workspace.",
+        "Please contact us with the next step for Team access."
+      ].join("\n")
+    );
+
+    return `mailto:hello@gehadelsobky.com?subject=${subject}&body=${body}`;
+  }, [workspaceCapabilities?.currentMembers, workspaceName, workspacePlan, workspaceUsage?.teamMembersCount]);
   const onboardingStateLabel = lifecycle?.onboardingState
     ?.replaceAll("_", " ")
     ?.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -789,6 +804,55 @@ export default function SettingsPage() {
               >
                 See Team plan
               </Link>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[1.5rem] border border-[rgba(0,176,255,0.22)] bg-[linear-gradient(135deg,rgba(23,69,199,0.06),rgba(0,176,255,0.08))] p-5">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Team interest</p>
+                <h4 className="mt-2 text-xl font-semibold text-[hsl(var(--foreground))]">
+                  Capture your collaboration intent before invites go live
+                </h4>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  If you already know this workspace will need collaborators, send a Team interest request now. We will
+                  know your workspace name, current seat count, and which next commercial layer matters most for you.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/80 bg-white/90 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Best for</p>
+                    <p className="mt-1 text-sm font-semibold">Shared planning teams</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/80 bg-white/90 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Signal</p>
+                    <p className="mt-1 text-sm font-semibold">Invite need + role management</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/80 bg-white/90 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Current state</p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {workspaceCapabilities?.currentMembers ?? workspaceUsage?.teamMembersCount ?? 1} seat ready
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 lg:min-w-[260px]">
+                <Link
+                  href={teamInterestHref}
+                  className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+                >
+                  Request Team access
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                >
+                  Compare Free, Pro, and Team
+                </Link>
+                <p className="text-center text-xs text-muted-foreground">
+                  This is a waitlist-style signal, not a billing step.
+                </p>
+              </div>
             </div>
           </div>
         </div>
