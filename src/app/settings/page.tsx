@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -409,6 +410,7 @@ export default function SettingsPage() {
   const lifecycle = profile.data?.profile.lifecycle;
   const workspaceMembersData = workspaceMembers.data?.members ?? [];
   const workspaceCapabilities = workspaceMembers.data?.capabilities;
+  const teamLockedFeature = lockedFeatures.find((feature) => feature.code === "team_workspaces");
   const onboardingStateLabel = lifecycle?.onboardingState
     ?.replaceAll("_", " ")
     ?.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -718,13 +720,76 @@ export default function SettingsPage() {
             })}
           </div>
 
+          <div className="mt-5 grid gap-3 xl:grid-cols-[0.9fr_1.1fr]">
+            <div className="rounded-[1.35rem] border border-border/80 bg-[rgba(248,251,255,0.82)] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Role model</p>
+              <h4 className="mt-2 text-lg font-semibold text-[hsl(var(--foreground))]">How team permissions will work</h4>
+              <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3">
+                  <p className="font-semibold text-[hsl(var(--foreground))]">Owner</p>
+                  <p className="mt-1">Controls billing, members, workspace setup, and future upgrade decisions.</p>
+                </div>
+                <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3">
+                  <p className="font-semibold text-[hsl(var(--foreground))]">Admin</p>
+                  <p className="mt-1">Helps manage members, habits, and shared planning rules without owning billing.</p>
+                </div>
+                <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3">
+                  <p className="font-semibold text-[hsl(var(--foreground))]">Member</p>
+                  <p className="mt-1">Participates in the shared workspace and follows the collaboration flow set by the team.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.35rem] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,250,255,0.94))] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Team unlock</p>
+                  <h4 className="mt-2 text-lg font-semibold text-[hsl(var(--foreground))]">What becomes available on Team</h4>
+                </div>
+                <Badge className="bg-[rgba(0,176,255,0.14)] text-[#1745C7] shadow-none">Next plan: TEAM</Badge>
+              </div>
+              <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                {teamLockedFeature?.description ??
+                  "Invite members, assign roles, and work together inside one shared workspace."}
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Seats</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    Up to {workspaceCapabilities?.maxMembers ?? 10} members per workspace
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Collaboration</p>
+                  <p className="mt-1 text-sm font-semibold">Invites, shared visibility, and role-based access</p>
+                </div>
+                <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Reporting</p>
+                  <p className="mt-1 text-sm font-semibold">Shared accountability and workspace-level reporting</p>
+                </div>
+                <div className="rounded-2xl border border-border/80 bg-white/90 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Activation path</p>
+                  <p className="mt-1 text-sm font-semibold">Upgrade to Team when you are ready to invite collaborators</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
             <div className="rounded-2xl border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
               Team invitations are not active on the {workspacePlan} plan yet. When Team is enabled, you will be able to invite members, assign roles, and share planning workflows from here.
             </div>
-            <Button disabled className="opacity-100">
-              Invite members on {workspaceCapabilities?.nextUnlockPlan?.toUpperCase() ?? "TEAM"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled className="opacity-100">
+                Invite members on {workspaceCapabilities?.nextUnlockPlan?.toUpperCase() ?? "TEAM"}
+              </Button>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-4 py-2 text-sm font-medium text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                See Team plan
+              </Link>
+            </div>
           </div>
         </div>
       </Card>
