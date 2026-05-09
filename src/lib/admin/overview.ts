@@ -21,6 +21,11 @@ export type AdminOverview = {
     byPlan: Record<string, number>;
     byStatus: Record<string, number>;
   };
+  interestRequests: {
+    total: number;
+    pending: number;
+    byType: Record<string, number>;
+  };
   onboarding: Array<{
     state: string;
     count: number;
@@ -47,6 +52,17 @@ export type AdminOverview = {
     userName: string;
     userEmail: string;
     workspaceName: string | null;
+  }>;
+  recentInterestRequests: Array<{
+    id: string;
+    type: string;
+    status: string;
+    source: string;
+    requestCount: number;
+    updatedAt: string;
+    workspaceName: string;
+    requesterName: string;
+    requesterEmail: string;
   }>;
   search: {
     query: string | null;
@@ -89,11 +105,15 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     totalSubscriptions,
     subscriptionsByPlan,
     subscriptionsByStatus,
+    totalInterestRequests,
+    pendingInterestRequests,
+    interestRequestsByType,
     unreadNotifications,
     carryoverUnread,
     onboardingCounts,
     recentUsers,
     recentNotifications,
+    recentInterestRequests,
     searchedUsers,
     searchedWorkspaces
   ] = await Promise.all([
@@ -112,6 +132,12 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     }),
     prisma.subscription.groupBy({
       by: ["billingStatus"],
+      _count: { _all: true }
+    }),
+    prisma.workspaceInterest.count(),
+    prisma.workspaceInterest.count({ where: { status: "pending" } }),
+    prisma.workspaceInterest.groupBy({
+      by: ["type"],
       _count: { _all: true }
     }),
     prisma.notification.count({ where: { status: "unread" } }),
@@ -151,6 +177,29 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
         workspace: {
           select: {
             name: true
+          }
+        }
+      }
+    }),
+    prisma.workspaceInterest.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        type: true,
+        status: true,
+        source: true,
+        requestCount: true,
+        updatedAt: true,
+        workspace: {
+          select: {
+            name: true
+          }
+        },
+        requestedBy: {
+          select: {
+            name: true,
+            email: true
           }
         }
       }
@@ -231,6 +280,11 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       byPlan: Object.fromEntries(subscriptionsByPlan.map((item) => [item.planCode, item._count._all])),
       byStatus: Object.fromEntries(subscriptionsByStatus.map((item) => [item.billingStatus, item._count._all]))
     },
+    interestRequests: {
+      total: totalInterestRequests,
+      pending: pendingInterestRequests,
+      byType: Object.fromEntries(interestRequestsByType.map((item) => [item.type, item._count._all]))
+    },
     onboarding: onboardingStateOrder.map((state) => ({
       state,
       count: onboardingMap.get(state) ?? 0
@@ -257,6 +311,17 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       userName: notification.user.name,
       userEmail: notification.user.email,
       workspaceName: notification.workspace?.name ?? null
+    })),
+    recentInterestRequests: recentInterestRequests.map((request) => ({
+      id: request.id,
+      type: request.type,
+      status: request.status,
+      source: request.source,
+      requestCount: request.requestCount,
+      updatedAt: request.updatedAt.toISOString(),
+      workspaceName: request.workspace.name,
+      requesterName: request.requestedBy.name,
+      requesterEmail: request.requestedBy.email
     })),
     search: {
       query: trimmedQuery,

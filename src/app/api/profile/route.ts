@@ -21,6 +21,19 @@ export async function GET() {
 
   const workspaceContext = await requireWorkspaceContextFromUser(auth.user);
   const usage = await getWorkspaceUsageSnapshot(workspaceContext.workspace.id);
+  const interestRequests = await prisma.workspaceInterest.findMany({
+    where: { workspaceId: workspaceContext.workspace.id },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      type: true,
+      status: true,
+      source: true,
+      requestCount: true,
+      lastRequestedAt: true,
+      updatedAt: true
+    }
+  });
 
   return Response.json({
     profile: {
@@ -50,7 +63,16 @@ export async function GET() {
       billingStatus: workspaceContext.subscription.billingStatus,
       entitlements: workspaceContext.entitlements,
       usage,
-      lockedFeatures: getLockedFeatureStatuses(workspaceContext.entitlements)
+      lockedFeatures: getLockedFeatureStatuses(workspaceContext.entitlements),
+      interestRequests: interestRequests.map((request) => ({
+        id: request.id,
+        type: request.type,
+        status: request.status,
+        source: request.source,
+        requestCount: request.requestCount,
+        lastRequestedAt: request.lastRequestedAt.toISOString(),
+        updatedAt: request.updatedAt.toISOString()
+      }))
     }
   });
 }

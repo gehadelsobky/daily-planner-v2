@@ -250,3 +250,8 @@ export const profileUpdateSchema = z
 export const workspaceUpdateSchema = z.object({
   name: z.string().min(2).max(80)
 });
+
+export const workspaceInterestCreateSchema = z.object({
+  type: z.enum(["pro", "team"]),
+  source: z.string().min(2).max(40)
+});

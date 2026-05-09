@@ -79,6 +79,18 @@ enum BillingStatus {
   canceled
 }
 
+enum WorkspaceInterestType {
+  pro
+  team
+}
+
+enum WorkspaceInterestStatus {
+  pending
+  reviewed
+  contacted
+  closed
+}
+
 enum AccountStatus {
   active
   disabled
@@ -128,6 +140,7 @@ model User {
   notifications    Notification[]
   ownedWorkspaces  Workspace[]       @relation("WorkspaceOwner")
   workspaceMembers WorkspaceMember[]
+  workspaceInterestRequests WorkspaceInterest[] @relation("WorkspaceInterestRequester")
 
   @@index([createdAt])
   @@index([accountStatus, createdAt])
@@ -153,6 +166,7 @@ model Workspace {
   habits        Habit[]
   xpEvents      XPEvent[]
   notifications Notification[]
+  interestRequests WorkspaceInterest[]
 
   @@index([ownerUserId])
 }
@@ -206,6 +220,28 @@ model FeatureUsage {
 
   @@unique([workspaceId, featureCode, periodKey])
   @@index([workspaceId, featureCode])
+}
+
+model WorkspaceInterest {
+  id                String                  @id @default(uuid())
+  workspaceId       String
+  requestedByUserId String
+  type              WorkspaceInterestType
+  status            WorkspaceInterestStatus @default(pending)
+  source            String
+  requestCount      Int                     @default(1)
+  notes             String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  lastRequestedAt   DateTime                @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  requestedBy User      @relation("WorkspaceInterestRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, type])
+  @@index([status, updatedAt])
+  @@index([requestedByUserId, createdAt])
+  @@index([workspaceId, createdAt])
 }
 
 model ScoreSetting {

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
+import { InterestRequestButton } from "@/components/saas/interest-request-button";
 import { apiFetch } from "@/lib/fetcher";
 import { DEFAULT_PHONE_COUNTRY, getPhoneCountryOption } from "@/lib/phone";
 
@@ -100,6 +101,15 @@ type ProfileResponse = {
       description: string;
       availableOn: string;
       enabled: boolean;
+    }>;
+    interestRequests: Array<{
+      id: string;
+      type: "pro" | "team";
+      status: string;
+      source: string;
+      requestCount: number;
+      lastRequestedAt: string;
+      updatedAt: string;
     }>;
   };
 };
@@ -411,21 +421,9 @@ export default function SettingsPage() {
   const workspaceMembersData = workspaceMembers.data?.members ?? [];
   const workspaceCapabilities = workspaceMembers.data?.capabilities;
   const teamLockedFeature = lockedFeatures.find((feature) => feature.code === "team_workspaces");
-  const teamInterestHref = useMemo(() => {
-    const subject = encodeURIComponent(`Daily Planner Team interest - ${workspaceName}`);
-    const body = encodeURIComponent(
-      [
-        `Workspace: ${workspaceName}`,
-        `Plan: ${workspacePlan}`,
-        `Current members: ${workspaceCapabilities?.currentMembers ?? workspaceUsage?.teamMembersCount ?? 1}`,
-        "",
-        "We want to use Daily Planner as a team workspace.",
-        "Please contact us with the next step for Team access."
-      ].join("\n")
-    );
-
-    return `mailto:hello@gehadelsobky.com?subject=${subject}&body=${body}`;
-  }, [workspaceCapabilities?.currentMembers, workspaceName, workspacePlan, workspaceUsage?.teamMembersCount]);
+  const workspaceInterestRequests = profile.data?.workspace?.interestRequests ?? [];
+  const teamInterestRequest = workspaceInterestRequests.find((request) => request.type === "team");
+  const proInterestRequest = workspaceInterestRequests.find((request) => request.type === "pro");
   const onboardingStateLabel = lifecycle?.onboardingState
     ?.replaceAll("_", " ")
     ?.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -837,12 +835,14 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex flex-col gap-3 lg:min-w-[260px]">
-                <Link
-                  href={teamInterestHref}
-                  className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
-                >
-                  Request Team access
-                </Link>
+                <InterestRequestButton
+                  interestType="team"
+                  source="settings-team-interest"
+                  label="Request Team access"
+                  requestedLabel="Team request saved"
+                  className="rounded-full px-5 py-3"
+                  initialRequested={Boolean(teamInterestRequest)}
+                />
                 <Link
                   href="/pricing"
                   className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
@@ -852,6 +852,55 @@ export default function SettingsPage() {
                 <p className="text-center text-xs text-muted-foreground">
                   This is a waitlist-style signal, not a billing step.
                 </p>
+                {teamInterestRequest ? (
+                  <p className="text-center text-xs text-muted-foreground">
+                    Team interest saved {teamInterestRequest.requestCount} time{teamInterestRequest.requestCount === 1 ? "" : "s"}.
+                    Last updated {new Date(teamInterestRequest.updatedAt).toLocaleDateString()}.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-[1.5rem] border border-border bg-white/88 p-5">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Pro interest</p>
+                <h4 className="mt-2 text-xl font-semibold text-[hsl(var(--foreground))]">
+                  Ask for deeper analytics before billing goes live
+                </h4>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  If this workspace already needs exports, monthly review, or stronger analytics, save a Pro interest
+                  request so we can prioritize rollout around real planning behavior instead of guesses.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 lg:min-w-[260px]">
+                <InterestRequestButton
+                  interestType="pro"
+                  source="settings-pro-interest"
+                  label="Join Pro waitlist"
+                  requestedLabel="Pro request saved"
+                  variant="secondary"
+                  className="rounded-full px-5 py-3"
+                  initialRequested={Boolean(proInterestRequest)}
+                />
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                >
+                  Review plan details
+                </Link>
+                {proInterestRequest ? (
+                  <p className="text-center text-xs text-muted-foreground">
+                    Pro interest saved {proInterestRequest.requestCount} time{proInterestRequest.requestCount === 1 ? "" : "s"}.
+                    Last updated {new Date(proInterestRequest.updatedAt).toLocaleDateString()}.
+                  </p>
+                ) : (
+                  <p className="text-center text-xs text-muted-foreground">
+                    Best for advanced analytics, monthly review, and exports.
+                  </p>
+                )}
               </div>
             </div>
           </div>

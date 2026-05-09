@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
+import { getCurrentWorkspaceContextForUser } from "@/lib/saas/workspace-runtime";
+import { InterestRequestButton } from "@/components/saas/interest-request-button";
 
 const plans = [
   {
@@ -57,10 +60,20 @@ const plans = [
 
 export default async function PricingPage() {
   const user = await getSessionUser();
-  const teamInterestHref =
-    "mailto:hello@gehadelsobky.com?subject=Daily%20Planner%20Team%20interest&body=We%20want%20to%20use%20Daily%20Planner%20as%20a%20shared%20team%20workspace.%0A%0APlease%20share%20the%20next%20step%20for%20Team%20access.";
-  const proWaitlistHref =
-    "mailto:hello@gehadelsobky.com?subject=Daily%20Planner%20Pro%20waitlist&body=I%20want%20to%20join%20the%20Daily%20Planner%20Pro%20waitlist.%0A%0APlease%20tell%20me%20when%20advanced%20analytics%2C%20exports%2C%20and%20email%20reminders%20are%20ready.";
+  const workspaceContext = user ? await getCurrentWorkspaceContextForUser(user) : null;
+  const interestRequests = workspaceContext
+    ? await prisma.workspaceInterest.findMany({
+        where: { workspaceId: workspaceContext.workspace.id },
+        select: {
+          type: true,
+          status: true,
+          requestCount: true,
+          updatedAt: true
+        }
+      })
+    : [];
+  const proInterestRequest = interestRequests.find((request) => request.type === "pro");
+  const teamInterestRequest = interestRequests.find((request) => request.type === "team");
 
   return (
     <main className="bg-[radial-gradient(circle_at_top_left,rgba(0,176,255,0.10),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(31,217,181,0.12),transparent_30%),linear-gradient(180deg,#f8fbff_0%,#ffffff_36%,#f6f9ff_100%)]">
@@ -161,12 +174,23 @@ export default async function PricingPage() {
               This helps shape the next rollout around real usage rather than guesses.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={proWaitlistHref}
-                className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
-              >
-                Join Pro waitlist
-              </Link>
+              {user ? (
+                <InterestRequestButton
+                  interestType="pro"
+                  source="pricing-pro-interest"
+                  label="Join Pro waitlist"
+                  requestedLabel="Pro request saved"
+                  className="rounded-full px-5 py-3"
+                  initialRequested={Boolean(proInterestRequest)}
+                />
+              ) : (
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+                >
+                  Join Pro waitlist
+                </Link>
+              )}
               <Link
                 href={user ? "/settings" : "/register"}
                 className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
@@ -174,6 +198,12 @@ export default async function PricingPage() {
                 {user ? "Review your current plan" : "Create a free workspace"}
               </Link>
             </div>
+            {proInterestRequest ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Pro interest saved {proInterestRequest.requestCount} time{proInterestRequest.requestCount === 1 ? "" : "s"}.
+                Last updated {new Date(proInterestRequest.updatedAt).toLocaleDateString()}.
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-[2rem] border border-[rgba(0,176,255,0.22)] bg-[linear-gradient(135deg,rgba(23,69,199,0.08),rgba(0,176,255,0.10),rgba(31,217,181,0.08))] p-7 shadow-[0_22px_54px_rgba(15,23,42,0.08)]">
@@ -197,12 +227,23 @@ export default async function PricingPage() {
               </div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={teamInterestHref}
-                className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
-              >
-                Request Team access
-              </Link>
+              {user ? (
+                <InterestRequestButton
+                  interestType="team"
+                  source="pricing-team-interest"
+                  label="Request Team access"
+                  requestedLabel="Team request saved"
+                  className="rounded-full px-5 py-3"
+                  initialRequested={Boolean(teamInterestRequest)}
+                />
+              ) : (
+                <Link
+                  href="/register"
+                  className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+                >
+                  Request Team access
+                </Link>
+              )}
               <Link
                 href={user ? "/settings" : "/login"}
                 className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
@@ -210,6 +251,12 @@ export default async function PricingPage() {
                 {user ? "Open workspace settings" : "Sign in to your workspace"}
               </Link>
             </div>
+            {teamInterestRequest ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                Team interest saved {teamInterestRequest.requestCount} time{teamInterestRequest.requestCount === 1 ? "" : "s"}.
+                Last updated {new Date(teamInterestRequest.updatedAt).toLocaleDateString()}.
+              </p>
+            ) : null}
           </div>
         </section>
       </section>

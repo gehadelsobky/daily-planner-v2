@@ -79,7 +79,7 @@ export default async function AdminPage({
         </form>
       </Card>
 
-      <section className="grid gap-4 lg:grid-cols-4">
+      <section className="grid gap-4 lg:grid-cols-5">
         <Card className="space-y-2">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Users</p>
           <p className="text-3xl font-semibold">{overview.users.total}</p>
@@ -105,6 +105,11 @@ export default async function AdminPage({
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Notifications</p>
           <p className="text-3xl font-semibold">{overview.notifications.totalUnread}</p>
           <p className="text-sm text-muted-foreground">{overview.notifications.carryoverUnread} carryover alerts still unread</p>
+        </Card>
+        <Card className="space-y-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Upgrade signals</p>
+          <p className="text-3xl font-semibold">{overview.interestRequests.total}</p>
+          <p className="text-sm text-muted-foreground">{overview.interestRequests.pending} pending follow-up</p>
         </Card>
       </section>
 
@@ -194,6 +199,62 @@ export default async function AdminPage({
                 <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(notification.createdAt)}</p>
               </div>
             ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Plan Interest Signals</p>
+              <p className="text-sm text-muted-foreground">Track which workspaces are asking for Pro or Team next.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+              {Object.entries(overview.interestRequests.byType)
+                .map(([type, count]) => `${type.toUpperCase()}: ${count}`)
+                .join(" · ") || "No requests yet"}
+            </Badge>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending requests</p>
+              <p className="mt-2 text-2xl font-semibold">{overview.interestRequests.pending}</p>
+            </div>
+            <div className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Total interest requests</p>
+              <p className="mt-2 text-2xl font-semibold">{overview.interestRequests.total}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold">Recent Plan Interest</p>
+            <p className="text-sm text-muted-foreground">These are the latest upgrade or collaboration signals from real workspaces.</p>
+          </div>
+          <div className="space-y-3">
+            {overview.recentInterestRequests.length ? (
+              overview.recentInterestRequests.map((request) => (
+                <div key={request.id} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{request.workspaceName}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{request.type.toUpperCase()}</Badge>
+                      <Badge>{prettify(request.status)}</Badge>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {request.requesterName} · {request.requesterEmail}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Source: {request.source} · Requested {request.requestCount} time{request.requestCount === 1 ? "" : "s"} · Updated {formatDateTime(request.updatedAt)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No upgrade or Team interest requests have been captured yet.</p>
+            )}
           </div>
         </Card>
       </section>
