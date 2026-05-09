@@ -29,6 +29,7 @@ export type AdminOverview = {
   inviteRequests: {
     total: number;
     pending: number;
+    byStatus: Record<string, number>;
   };
   onboarding: Array<{
     state: string;
@@ -131,6 +132,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     interestRequestsByType,
     totalInviteRequests,
     pendingInviteRequests,
+    inviteRequestsByStatus,
     unreadNotifications,
     carryoverUnread,
     onboardingCounts,
@@ -166,6 +168,10 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     }),
     prisma.workspaceInviteRequest.count(),
     prisma.workspaceInviteRequest.count({ where: { status: "pending" } }),
+    prisma.workspaceInviteRequest.groupBy({
+      by: ["status"],
+      _count: { _all: true }
+    }),
     prisma.notification.count({ where: { status: "unread" } }),
     prisma.notification.count({ where: { status: "unread", type: "carryover_tasks" } }),
     prisma.user.groupBy({
@@ -342,7 +348,8 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     },
     inviteRequests: {
       total: totalInviteRequests,
-      pending: pendingInviteRequests
+      pending: pendingInviteRequests,
+      byStatus: Object.fromEntries(inviteRequestsByStatus.map((row) => [row.status, row._count._all]))
     },
     onboarding: onboardingStateOrder.map((state) => ({
       state,

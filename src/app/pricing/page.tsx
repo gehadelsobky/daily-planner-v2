@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 import { getCurrentWorkspaceContextForUser } from "@/lib/saas/workspace-runtime";
+import { getLockedFeatureStatuses } from "@/lib/saas/plans";
+import { getUpgradeSignalSummary } from "@/lib/saas/upgrade-signals";
 import { InterestRequestButton } from "@/components/saas/interest-request-button";
 import { TeamInviteRequestForm } from "@/components/saas/team-invite-request-form";
 
@@ -87,8 +90,34 @@ export default async function PricingPage() {
         }
       })
     : null;
+  const workspaceUsage = workspaceContext ? await getWorkspaceUsageSnapshot(workspaceContext.workspace.id) : null;
   const proInterestRequest = interestRequests.find((request) => request.type === "pro");
   const teamInterestRequest = interestRequests.find((request) => request.type === "team");
+  const upgradeSignals = workspaceContext && workspaceUsage
+    ? getUpgradeSignalSummary({
+        planCode: workspaceContext.planCode,
+        usage: workspaceUsage,
+        entitlements: workspaceContext.entitlements,
+        lockedFeatures: getLockedFeatureStatuses(workspaceContext.entitlements),
+        interestRequests: interestRequests.map((request) => ({
+          type: request.type,
+          status: request.status,
+          requestCount: request.requestCount,
+          updatedAt: request.updatedAt.toISOString()
+        })),
+        inviteRequest: inviteRequest
+          ? {
+              status: inviteRequest.status,
+              requestCount: inviteRequest.requestCount,
+              requestedSeatCount: inviteRequest.requestedSeatCount,
+              inviteEmails: Array.isArray(inviteRequest.inviteEmails)
+                ? inviteRequest.inviteEmails.filter((item): item is string => typeof item === "string")
+                : [],
+              updatedAt: inviteRequest.updatedAt.toISOString()
+            }
+          : null
+      })
+    : null;
 
   return (
     <main className="bg-[radial-gradient(circle_at_top_left,rgba(0,176,255,0.10),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(31,217,181,0.12),transparent_30%),linear-gradient(180deg,#f8fbff_0%,#ffffff_36%,#f6f9ff_100%)]">
@@ -105,6 +134,45 @@ export default async function PricingPage() {
             can arrive cleanly without reworking your workflow.
           </p>
         </div>
+
+        {user && workspaceContext && upgradeSignals ? (
+          <section className="rounded-[2rem] border border-[rgba(0,176,255,0.22)] bg-[linear-gradient(135deg,rgba(23,69,199,0.10),rgba(0,176,255,0.08),rgba(31,217,181,0.10))] p-7 shadow-[0_22px_54px_rgba(15,23,42,0.08)]">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[rgba(0,176,255,0.14)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#1745C7]">
+                    {workspaceContext.planCode.toUpperCase()} workspace
+                  </span>
+                  <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[hsl(var(--foreground))]">
+                    Recommended next: {upgradeSignals.recommendedTrack.toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <h2 className="text-3xl font-semibold leading-tight text-[hsl(var(--foreground))]">
+                    {upgradeSignals.headline}
+                  </h2>
+                  <p className="mt-3 max-w-3xl text-sm leading-7 text-[hsl(var(--muted-foreground))]">
+                    {upgradeSignals.description}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3 lg:justify-end">
+                <Link
+                  href={upgradeSignals.primaryActionHref}
+                  className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+                >
+                  {upgradeSignals.primaryActionLabel}
+                </Link>
+                <Link
+                  href={upgradeSignals.secondaryActionHref}
+                  className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+                >
+                  {upgradeSignals.secondaryActionLabel}
+                </Link>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-3">
           {plans.map((plan) => (

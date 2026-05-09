@@ -10,6 +10,7 @@ import { buildLifecycleSnapshot } from "@/lib/saas/account-lifecycle";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 import { getLockedFeatureStatuses } from "@/lib/saas/plans";
+import { getUpgradeSignalSummary } from "@/lib/saas/upgrade-signals";
 
 const querySchema = z.object({
   range: z.enum(["week", "month"]).default("week")
@@ -53,6 +54,46 @@ export async function GET(req: Request) {
   }
 
   const usage = await getWorkspaceUsageSnapshot(workspace.id);
+  const interestRequests = await prisma.workspaceInterest.findMany({
+    where: { workspaceId: workspace.id },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      type: true,
+      status: true,
+      requestCount: true,
+      updatedAt: true
+    }
+  });
+  const inviteRequest = await prisma.workspaceInviteRequest.findUnique({
+    where: { workspaceId: workspace.id },
+    select: {
+      status: true,
+      requestCount: true,
+      requestedSeatCount: true,
+      inviteEmails: true,
+      updatedAt: true
+    }
+  });
+  const lockedFeatures = getLockedFeatureStatuses(entitlements);
+  const upgradeSignals = getUpgradeSignalSummary({
+    planCode,
+    usage,
+    entitlements,
+    lockedFeatures,
+    interestRequests: interestRequests.map((request) => ({
+      ...request,
+      updatedAt: request.updatedAt.toISOString()
+    })),
+    inviteRequest: inviteRequest
+      ? {
+          ...inviteRequest,
+          inviteEmails: Array.isArray(inviteRequest.inviteEmails)
+            ? inviteRequest.inviteEmails.filter((item): item is string => typeof item === "string")
+            : [],
+          updatedAt: inviteRequest.updatedAt.toISOString()
+        }
+      : null
+  });
 
   const xpEvents = await prisma.xPEvent.findMany({
     where: { userId: user.id, workspaceId: workspace.id }
@@ -78,7 +119,8 @@ export async function GET(req: Request) {
       billingStatus: subscription.billingStatus,
       usage,
       entitlements,
-      lockedFeatures: getLockedFeatureStatuses(entitlements)
+      lockedFeatures,
+      upgradeSignals
     },
     lifecycle: buildLifecycleSnapshot(user),
     series,

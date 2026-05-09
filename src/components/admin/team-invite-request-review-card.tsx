@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch } from "@/lib/fetcher";
+import { getTeamInvitePipelineGuidance } from "@/lib/saas/upgrade-signals";
 
 type TeamInviteRequestReviewCardProps = {
   request: {
@@ -45,6 +46,12 @@ export function TeamInviteRequestReviewCard({ request }: TeamInviteRequestReview
   const [status, setStatus] = useState(request.status);
   const [notes, setNotes] = useState(request.notes ?? "");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const guidance = getTeamInvitePipelineGuidance({
+    status,
+    requestCount: request.requestCount,
+    requestedSeatCount: request.requestedSeatCount,
+    inviteEmails: request.inviteEmails
+  });
 
   const saveReview = useMutation({
     mutationFn: () =>
@@ -104,6 +111,14 @@ export function TeamInviteRequestReviewCard({ request }: TeamInviteRequestReview
           <p className="mt-1 text-sm text-[hsl(var(--foreground))]">{request.message}</p>
         </div>
       ) : null}
+
+      <div className="mt-3 rounded-2xl border border-[#00b0ff]/20 bg-[rgba(0,176,255,0.06)] px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Pipeline guidance</p>
+          <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{guidance.rolloutLabel}</Badge>
+        </div>
+        <p className="mt-2 text-sm text-[hsl(var(--foreground))]">{guidance.nextAction}</p>
+      </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)_140px]">
         <select

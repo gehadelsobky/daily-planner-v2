@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -34,6 +35,16 @@ type DashboardResponse = {
       availableOn: string;
       enabled: boolean;
     }>;
+    upgradeSignals: {
+      headline: string;
+      description: string;
+      primaryActionLabel: string;
+      primaryActionHref: string;
+      secondaryActionLabel: string;
+      secondaryActionHref: string;
+      recommendedTrack: "pro" | "team";
+      activeState: string;
+    };
   };
   lifecycle: {
     accountStatus: string;
@@ -122,6 +133,7 @@ export default function DashboardPage() {
   const lockedFeatures = data?.workspace.lockedFeatures ?? [];
   const coreUpgradeFeatures = lockedFeatures.filter((feature) => feature.availableOn === "pro");
   const teamLockedFeature = lockedFeatures.find((feature) => feature.code === "team_workspaces");
+  const upgradeSignals = data?.workspace.upgradeSignals;
   const onboardingProgress = data?.lifecycle.onboardingProgressPercent ?? 0;
   const onboardingStateLabel =
     data?.lifecycle.onboardingState?.replaceAll("_", " ")?.replace(/\b\w/g, (char) => char.toUpperCase()) ??
@@ -303,6 +315,38 @@ export default function DashboardPage() {
           </div>
         </div>
       </Card>
+
+      {upgradeSignals ? (
+        <Card className="space-y-4 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Upgrade path</p>
+              <h2 className="mt-2 text-2xl font-semibold">{upgradeSignals.headline}</h2>
+              <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{upgradeSignals.description}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge>{workspacePlan} plan</Badge>
+              <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                Track {upgradeSignals.recommendedTrack.toUpperCase()}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={upgradeSignals.primaryActionHref}
+              className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+            >
+              {upgradeSignals.primaryActionLabel}
+            </Link>
+            <Link
+              href={upgradeSignals.secondaryActionHref}
+              className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+            >
+              {upgradeSignals.secondaryActionLabel}
+            </Link>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
         <Card className="space-y-4">

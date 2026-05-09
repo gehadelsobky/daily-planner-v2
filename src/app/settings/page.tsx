@@ -124,6 +124,16 @@ type ProfileResponse = {
       lastRequestedAt: string;
       updatedAt: string;
     } | null;
+    upgradeSignals: {
+      headline: string;
+      description: string;
+      primaryActionLabel: string;
+      primaryActionHref: string;
+      secondaryActionLabel: string;
+      secondaryActionHref: string;
+      recommendedTrack: "pro" | "team";
+      activeState: string;
+    };
   };
 };
 
@@ -438,6 +448,7 @@ export default function SettingsPage() {
   const teamInterestRequest = workspaceInterestRequests.find((request) => request.type === "team");
   const proInterestRequest = workspaceInterestRequests.find((request) => request.type === "pro");
   const workspaceInviteRequest = profile.data?.workspace?.inviteRequest ?? null;
+  const upgradeSignals = profile.data?.workspace?.upgradeSignals;
   const onboardingStateLabel = lifecycle?.onboardingState
     ?.replaceAll("_", " ")
     ?.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -591,6 +602,38 @@ export default function SettingsPage() {
       </Card>
 
       <Card className="space-y-4">
+        {upgradeSignals ? (
+          <div className="rounded-[1.5rem] border border-[#00b0ff]/20 bg-[linear-gradient(135deg,rgba(23,69,199,0.08),rgba(0,176,255,0.08),rgba(31,217,181,0.08))] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Upgrade status</p>
+                <h2 className="mt-2 text-2xl font-semibold">{upgradeSignals.headline}</h2>
+                <p className="mt-2 text-sm text-muted-foreground">{upgradeSignals.description}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge>{workspacePlan} plan</Badge>
+                <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                  Track {upgradeSignals.recommendedTrack.toUpperCase()}
+                </Badge>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                href={upgradeSignals.primaryActionHref}
+                className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+              >
+                {upgradeSignals.primaryActionLabel}
+              </Link>
+              <Link
+                href={upgradeSignals.secondaryActionHref}
+                className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                {upgradeSignals.secondaryActionLabel}
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

@@ -8,6 +8,7 @@ import { buildLifecycleSnapshot, syncUserLifecycle, touchUserActivity } from "@/
 import { requireWorkspaceContextFromUser } from "@/lib/saas/workspace-runtime";
 import { getWorkspaceUsageSnapshot } from "@/lib/saas/feature-usage";
 import { getLockedFeatureStatuses } from "@/lib/saas/plans";
+import { getUpgradeSignalSummary } from "@/lib/saas/upgrade-signals";
 import { getAdminAccess } from "@/lib/admin/access";
 
 function asStringArray(value: unknown): string[] {
@@ -49,6 +50,42 @@ export async function GET() {
       updatedAt: true
     }
   });
+  const lockedFeatures = getLockedFeatureStatuses(workspaceContext.entitlements);
+  const normalizedInviteRequest = inviteRequest
+    ? {
+        ...inviteRequest,
+        inviteEmails: Array.isArray(inviteRequest.inviteEmails)
+          ? inviteRequest.inviteEmails.filter((item): item is string => typeof item === "string")
+          : [],
+        lastRequestedAt: inviteRequest.lastRequestedAt.toISOString(),
+        updatedAt: inviteRequest.updatedAt.toISOString()
+      }
+    : null;
+  const normalizedInterestRequests = interestRequests.map((request) => ({
+    id: request.id,
+    type: request.type,
+    status: request.status,
+    source: request.source,
+    requestCount: request.requestCount,
+    lastRequestedAt: request.lastRequestedAt.toISOString(),
+    updatedAt: request.updatedAt.toISOString()
+  }));
+  const upgradeSignals = getUpgradeSignalSummary({
+    planCode: workspaceContext.planCode,
+    usage,
+    entitlements: workspaceContext.entitlements,
+    lockedFeatures,
+    interestRequests: normalizedInterestRequests,
+    inviteRequest: normalizedInviteRequest
+      ? {
+          status: normalizedInviteRequest.status,
+          requestCount: normalizedInviteRequest.requestCount,
+          requestedSeatCount: normalizedInviteRequest.requestedSeatCount,
+          inviteEmails: normalizedInviteRequest.inviteEmails,
+          updatedAt: normalizedInviteRequest.updatedAt
+        }
+      : null
+  });
 
   return Response.json({
     profile: {
@@ -78,26 +115,10 @@ export async function GET() {
       billingStatus: workspaceContext.subscription.billingStatus,
       entitlements: workspaceContext.entitlements,
       usage,
-      lockedFeatures: getLockedFeatureStatuses(workspaceContext.entitlements),
-      interestRequests: interestRequests.map((request) => ({
-        id: request.id,
-        type: request.type,
-        status: request.status,
-        source: request.source,
-        requestCount: request.requestCount,
-        lastRequestedAt: request.lastRequestedAt.toISOString(),
-        updatedAt: request.updatedAt.toISOString()
-      })),
-      inviteRequest: inviteRequest
-        ? {
-            ...inviteRequest,
-            inviteEmails: Array.isArray(inviteRequest.inviteEmails)
-              ? inviteRequest.inviteEmails.filter((item): item is string => typeof item === "string")
-              : [],
-            lastRequestedAt: inviteRequest.lastRequestedAt.toISOString(),
-            updatedAt: inviteRequest.updatedAt.toISOString()
-          }
-        : null
+      lockedFeatures,
+      interestRequests: normalizedInterestRequests,
+      inviteRequest: normalizedInviteRequest,
+      upgradeSignals
     }
   });
 }

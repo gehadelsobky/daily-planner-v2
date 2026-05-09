@@ -333,6 +333,17 @@ export default async function AdminPage({
               <p className="mt-2 text-2xl font-semibold">{overview.inviteRequests.total}</p>
             </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(overview.inviteRequests.byStatus).length ? (
+              Object.entries(overview.inviteRequests.byStatus).map(([status, count]) => (
+                <Badge key={status} className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                  {prettify(status)}: {count}
+                </Badge>
+              ))
+            ) : (
+              <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">No pipeline states yet</Badge>
+            )}
+          </div>
         </Card>
 
         <Card className="space-y-4">

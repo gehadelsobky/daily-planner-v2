@@ -30,6 +30,11 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
           planCode: string;
           usage: { habitsCount: number; teamMembersCount: number };
           entitlements: { maxHabits: number | "unlimited" };
+          upgradeSignals: {
+            primaryActionLabel: string;
+            primaryActionHref: string;
+            activeState: string;
+          };
         };
       }>("/api/profile"),
     enabled: loggedIn
@@ -104,6 +109,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
   const isAdmin = workspaceQuery.data?.admin?.isAdmin ?? false;
   const workspaceUsage = workspaceQuery.data?.workspace?.usage;
   const workspaceHabitLimit = workspaceQuery.data?.workspace?.entitlements?.maxHabits;
+  const upgradeSignals = workspaceQuery.data?.workspace?.upgradeSignals;
   const workspaceUsageLabel = workspaceUsage
     ? workspaceHabitLimit === "unlimited"
       ? `${workspaceUsage.habitsCount} habits active`
@@ -150,6 +156,18 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
                     <ChevronsUpDown className="h-3.5 w-3.5" />
                     Workspace switcher soon
                   </span>
+                  {workspacePlan === "FREE" && upgradeSignals ? (
+                    <Link
+                      href={upgradeSignals.primaryActionHref}
+                      className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.08)] transition ${
+                        upgradeSignals.activeState === "none"
+                          ? "bg-[#1745C7] text-white hover:bg-[#0a0087]"
+                          : "border border-[rgba(0,176,255,0.22)] bg-[rgba(0,176,255,0.08)] text-[#1745C7] hover:border-[#00b0ff]"
+                      }`}
+                    >
+                      {upgradeSignals.activeState === "none" ? "Upgrade" : upgradeSignals.primaryActionLabel}
+                    </Link>
+                  ) : null}
                 </div>
               ) : null}
               <Link
