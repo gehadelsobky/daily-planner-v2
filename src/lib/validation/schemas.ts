@@ -270,5 +270,20 @@ export const workspaceInviteRequestCreateSchema = z.object({
 
 export const workspaceInviteRequestAdminUpdateSchema = z.object({
   status: z.enum(["pending", "reviewed", "approved", "closed"]),
+  pipeline_stage: z.enum(["contacted", "qualified", "scheduled", "converted"]).optional().nullable(),
   notes: z.string().max(2000).optional().default("")
+});
+
+export const workspaceConversionEventCreateSchema = z.object({
+  event_type: z.enum([
+    "upgrade_cta_viewed",
+    "upgrade_cta_clicked",
+    "pro_interest_requested",
+    "team_interest_requested",
+    "team_invite_requested"
+  ]),
+  source: z.string().min(2).max(60),
+  recommended_track: z.enum(["pro", "team"]).optional(),
+  active_state: z.string().min(1).max(60).optional(),
+  target_href: z.string().min(1).max(200).optional()
 });

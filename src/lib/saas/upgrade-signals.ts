@@ -15,6 +15,7 @@ type InterestRequest = {
 
 type InviteRequest = {
   status: string;
+  pipelineStage: string | null;
   requestCount: number;
   requestedSeatCount: number;
   inviteEmails: string[];
@@ -57,7 +58,11 @@ export type UpgradeSignalSummary = {
     | "team_interest_active"
     | "team_invite_pending"
     | "team_invite_reviewed"
+    | "team_invite_contacted"
+    | "team_invite_qualified"
+    | "team_invite_scheduled"
     | "team_invite_approved"
+    | "team_invite_converted"
     | "team_invite_closed";
 };
 
@@ -100,6 +105,45 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       };
     }
 
+    if (teamInviteRequest.pipelineStage === "contacted") {
+      return {
+        headline: "Team rollout contact started",
+        description: "We have started outreach for this Team request. Keep the seat list current while rollout details are discussed.",
+        primaryActionLabel: "Review Team request",
+        primaryActionHref: "/settings#workspace-members",
+        secondaryActionLabel: "Open Team pricing",
+        secondaryActionHref: "/pricing",
+        recommendedTrack: "team",
+        activeState: "team_invite_contacted"
+      };
+    }
+
+    if (teamInviteRequest.pipelineStage === "qualified") {
+      return {
+        headline: "Team request qualified",
+        description: `This workspace looks like a strong Team candidate. Keep the requested ${teamInviteRequest.requestedSeatCount} seats and invite list aligned while rollout is finalized.`,
+        primaryActionLabel: "Review Team request",
+        primaryActionHref: "/settings#workspace-members",
+        secondaryActionLabel: "Compare Team plan",
+        secondaryActionHref: "/pricing",
+        recommendedTrack: "team",
+        activeState: "team_invite_qualified"
+      };
+    }
+
+    if (teamInviteRequest.pipelineStage === "scheduled") {
+      return {
+        headline: "Team onboarding scheduled",
+        description: "This Team request has moved into scheduling. Keep the invite emails updated so the rollout can start without rework.",
+        primaryActionLabel: "Review Team request",
+        primaryActionHref: "/settings#workspace-members",
+        secondaryActionLabel: "Open Team pricing",
+        secondaryActionHref: "/pricing",
+        recommendedTrack: "team",
+        activeState: "team_invite_scheduled"
+      };
+    }
+
     if (teamInviteRequest.status === "closed") {
       return {
         headline: "Team request closed",
@@ -110,6 +154,19 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
         secondaryActionHref: "/settings#workspace-members",
         recommendedTrack: "team",
         activeState: "team_invite_closed"
+      };
+    }
+
+    if (teamInviteRequest.pipelineStage === "converted") {
+      return {
+        headline: "Team rollout converted",
+        description: "This workspace has already moved through the Team rollout pipeline. Collaboration features can be finalized from the workspace settings path later.",
+        primaryActionLabel: "Review Team request",
+        primaryActionHref: "/settings#workspace-members",
+        secondaryActionLabel: "Open Team pricing",
+        secondaryActionHref: "/pricing",
+        recommendedTrack: "team",
+        activeState: "team_invite_converted"
       };
     }
 
@@ -191,6 +248,7 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
 
 export function getTeamInvitePipelineGuidance(request: {
   status: string;
+  pipelineStage: string | null;
   requestCount: number;
   requestedSeatCount: number;
   inviteEmails: string[];
@@ -203,6 +261,34 @@ export function getTeamInvitePipelineGuidance(request: {
     return {
       rolloutLabel,
       nextAction: "Confirm the first rollout wave, keep notes current, and prepare the eventual invite conversion step."
+    };
+  }
+
+  if (request.pipelineStage === "contacted") {
+    return {
+      rolloutLabel,
+      nextAction: "Initial outreach has started. Confirm the primary contact, validate urgency, and decide whether the request is serious enough to qualify."
+    };
+  }
+
+  if (request.pipelineStage === "qualified") {
+    return {
+      rolloutLabel,
+      nextAction: "This looks like a real team need. Confirm the first seats, expected timeline, and move it toward scheduling."
+    };
+  }
+
+  if (request.pipelineStage === "scheduled") {
+    return {
+      rolloutLabel,
+      nextAction: "Prepare the launch sequence, confirm who will be invited first, and keep notes aligned before approval."
+    };
+  }
+
+  if (request.pipelineStage === "converted") {
+    return {
+      rolloutLabel,
+      nextAction: "This request has completed the current pipeline. Capture any final internal notes and use it as a reference for future Team rollouts."
     };
   }
 

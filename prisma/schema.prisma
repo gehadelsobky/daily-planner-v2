@@ -149,6 +149,7 @@ model User {
   workspaceMembers WorkspaceMember[]
   workspaceInterestRequests WorkspaceInterest[] @relation("WorkspaceInterestRequester")
   workspaceInviteRequests WorkspaceInviteRequest[] @relation("WorkspaceInviteRequester")
+  workspaceConversionEvents WorkspaceConversionEvent[] @relation("WorkspaceConversionRequester")
 
   @@index([createdAt])
   @@index([accountStatus, createdAt])
@@ -176,6 +177,7 @@ model Workspace {
   notifications Notification[]
   interestRequests WorkspaceInterest[]
   inviteRequests WorkspaceInviteRequest[]
+  conversionEvents WorkspaceConversionEvent[]
 
   @@index([ownerUserId])
 }
@@ -258,6 +260,7 @@ model WorkspaceInviteRequest {
   workspaceId       String                       @unique
   requestedByUserId String
   status            WorkspaceInviteRequestStatus @default(pending)
+  pipelineStage     String?
   source            String
   requestCount      Int                          @default(1)
   requestedSeatCount Int
@@ -274,6 +277,25 @@ model WorkspaceInviteRequest {
   @@index([status, updatedAt])
   @@index([requestedByUserId, createdAt])
   @@index([workspaceId, createdAt])
+}
+
+model WorkspaceConversionEvent {
+  id               String   @id @default(uuid())
+  workspaceId      String
+  userId           String
+  eventType        String
+  source           String
+  recommendedTrack String?
+  activeState      String?
+  targetHref       String?
+  createdAt        DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation("WorkspaceConversionRequester", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([source, createdAt])
+  @@index([recommendedTrack, createdAt])
 }
 
 model ScoreSetting {

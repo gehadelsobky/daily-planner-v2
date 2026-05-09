@@ -8,6 +8,7 @@ import { Bell, ChevronsUpDown } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TrackedUpgradeLink } from "@/components/saas/tracked-upgrade-link";
 import { apiFetch } from "@/lib/fetcher";
 
 export function TopNav({ loggedIn }: { loggedIn: boolean }) {
@@ -34,6 +35,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
             primaryActionLabel: string;
             primaryActionHref: string;
             activeState: string;
+            recommendedTrack: "pro" | "team";
           };
         };
       }>("/api/profile"),
@@ -157,8 +159,11 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
                     Workspace switcher soon
                   </span>
                   {workspacePlan === "FREE" && upgradeSignals ? (
-                    <Link
+                    <TrackedUpgradeLink
                       href={upgradeSignals.primaryActionHref}
+                      source="top-nav-upgrade-pill"
+                      recommendedTrack={upgradeSignals.recommendedTrack}
+                      activeState={upgradeSignals.activeState}
                       className={`inline-flex items-center rounded-full px-3 py-2 text-xs font-semibold shadow-[0_10px_24px_rgba(15,23,42,0.08)] transition ${
                         upgradeSignals.activeState === "none"
                           ? "bg-[#1745C7] text-white hover:bg-[#0a0087]"
@@ -166,7 +171,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
                       }`}
                     >
                       {upgradeSignals.activeState === "none" ? "Upgrade" : upgradeSignals.primaryActionLabel}
-                    </Link>
+                    </TrackedUpgradeLink>
                   ) : null}
                 </div>
               ) : null}

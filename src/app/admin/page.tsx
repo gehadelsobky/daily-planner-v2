@@ -316,6 +316,83 @@ export default async function AdminPage({
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
+              <p className="text-sm font-semibold">Upgrade Conversion Signals</p>
+              <p className="text-sm text-muted-foreground">Measure which upgrade surfaces and tracks generate the strongest intent.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+              {overview.conversionEvents.total} total events
+            </Badge>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">By track</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Object.entries(overview.conversionEvents.byTrack).length ? (
+                  Object.entries(overview.conversionEvents.byTrack).map(([track, count]) => (
+                    <Badge key={track} className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                      {track.toUpperCase()}: {count}
+                    </Badge>
+                  ))
+                ) : (
+                  <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">No tracked clicks yet</Badge>
+                )}
+              </div>
+            </div>
+            <div className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">By event type</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Object.entries(overview.conversionEvents.byType).length ? (
+                  Object.entries(overview.conversionEvents.byType).map(([eventType, count]) => (
+                    <Badge key={eventType} className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                      {prettify(eventType)}: {count}
+                    </Badge>
+                  ))
+                ) : (
+                  <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">Waiting for signal data</Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold">Recent Conversion Events</p>
+            <p className="text-sm text-muted-foreground">See which workspace, source, and track triggered recent upgrade intent.</p>
+          </div>
+          <div className="space-y-3">
+            {overview.recentConversionEvents.length ? (
+              overview.recentConversionEvents.map((event) => (
+                <div key={event.id} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{event.workspaceName}</p>
+                      <p className="text-sm text-muted-foreground">{event.userName} · {event.userEmail}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{prettify(event.eventType)}</Badge>
+                      {event.recommendedTrack ? <Badge>{event.recommendedTrack.toUpperCase()}</Badge> : null}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Source: {event.source}
+                    {event.activeState ? ` · State: ${prettify(event.activeState)}` : ""}
+                    {event.targetHref ? ` · Target: ${event.targetHref}` : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatDateTime(event.createdAt)}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No upgrade conversion events have been captured yet.</p>
+            )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
               <p className="text-sm font-semibold">Team Invite Pipeline</p>
               <p className="text-sm text-muted-foreground">Track structured requests for seats, invite targets, and rollout preparation.</p>
             </div>

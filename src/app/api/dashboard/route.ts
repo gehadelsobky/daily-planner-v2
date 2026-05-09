@@ -68,6 +68,7 @@ export async function GET(req: Request) {
     where: { workspaceId: workspace.id },
     select: {
       status: true,
+      pipelineStage: true,
       requestCount: true,
       requestedSeatCount: true,
       inviteEmails: true,

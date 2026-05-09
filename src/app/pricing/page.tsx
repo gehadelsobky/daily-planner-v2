@@ -7,6 +7,7 @@ import { getLockedFeatureStatuses } from "@/lib/saas/plans";
 import { getUpgradeSignalSummary } from "@/lib/saas/upgrade-signals";
 import { InterestRequestButton } from "@/components/saas/interest-request-button";
 import { TeamInviteRequestForm } from "@/components/saas/team-invite-request-form";
+import { TrackedUpgradeLink } from "@/components/saas/tracked-upgrade-link";
 
 const plans = [
   {
@@ -82,6 +83,7 @@ export default async function PricingPage() {
         select: {
           id: true,
           status: true,
+          pipelineStage: true,
           requestCount: true,
           requestedSeatCount: true,
           inviteEmails: true,
@@ -108,6 +110,7 @@ export default async function PricingPage() {
         inviteRequest: inviteRequest
           ? {
               status: inviteRequest.status,
+              pipelineStage: inviteRequest.pipelineStage,
               requestCount: inviteRequest.requestCount,
               requestedSeatCount: inviteRequest.requestedSeatCount,
               inviteEmails: Array.isArray(inviteRequest.inviteEmails)
@@ -157,18 +160,24 @@ export default async function PricingPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 lg:justify-end">
-                <Link
+                <TrackedUpgradeLink
                   href={upgradeSignals.primaryActionHref}
+                  source="pricing-upgrade-banner-primary"
+                  recommendedTrack={upgradeSignals.recommendedTrack}
+                  activeState={upgradeSignals.activeState}
                   className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
                 >
                   {upgradeSignals.primaryActionLabel}
-                </Link>
-                <Link
+                </TrackedUpgradeLink>
+                <TrackedUpgradeLink
                   href={upgradeSignals.secondaryActionHref}
+                  source="pricing-upgrade-banner-secondary"
+                  recommendedTrack={upgradeSignals.recommendedTrack}
+                  activeState={upgradeSignals.activeState}
                   className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
                 >
                   {upgradeSignals.secondaryActionLabel}
-                </Link>
+                </TrackedUpgradeLink>
               </div>
             </div>
           </section>

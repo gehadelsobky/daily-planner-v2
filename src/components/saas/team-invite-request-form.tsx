@@ -12,6 +12,7 @@ type TeamInviteRequestFormProps = {
   initialRequest?: {
     id: string;
     status: string;
+    pipelineStage: string | null;
     requestCount: number;
     requestedSeatCount: number;
     inviteEmails: string[];
@@ -23,6 +24,10 @@ type TeamInviteRequestFormProps = {
 
 function parseEmails(value: string) {
   return [...new Set(value.split(/[\n,;]+/).map((item) => item.trim().toLowerCase()).filter(Boolean))];
+}
+
+function prettify(value: string) {
+  return value.replaceAll("_", " ");
 }
 
 export function TeamInviteRequestForm({ source, initialRequest, compact = false }: TeamInviteRequestFormProps) {
@@ -127,8 +132,9 @@ export function TeamInviteRequestForm({ source, initialRequest, compact = false 
         </Button>
         {initialRequest ? (
           <p className="text-xs text-muted-foreground">
-            Current status: {initialRequest.status.replaceAll("_", " ")} · Submitted {initialRequest.requestCount} time
-            {initialRequest.requestCount === 1 ? "" : "s"}.
+            Current status: {prettify(initialRequest.status)}
+            {initialRequest.pipelineStage ? ` · ${prettify(initialRequest.pipelineStage)}` : ""} · Submitted{" "}
+            {initialRequest.requestCount} time{initialRequest.requestCount === 1 ? "" : "s"}.
           </p>
         ) : null}
       </div>

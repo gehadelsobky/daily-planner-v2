@@ -31,6 +31,11 @@ export type AdminOverview = {
     pending: number;
     byStatus: Record<string, number>;
   };
+  conversionEvents: {
+    total: number;
+    byType: Record<string, number>;
+    byTrack: Record<string, number>;
+  };
   onboarding: Array<{
     state: string;
     count: number;
@@ -74,6 +79,7 @@ export type AdminOverview = {
   recentInviteRequests: Array<{
     id: string;
     status: string;
+    pipelineStage: string | null;
     source: string;
     requestCount: number;
     requestedSeatCount: number;
@@ -85,6 +91,18 @@ export type AdminOverview = {
     workspaceName: string;
     requesterName: string;
     requesterEmail: string;
+  }>;
+  recentConversionEvents: Array<{
+    id: string;
+    eventType: string;
+    source: string;
+    recommendedTrack: string | null;
+    activeState: string | null;
+    targetHref: string | null;
+    createdAt: string;
+    workspaceName: string;
+    userName: string;
+    userEmail: string;
   }>;
   search: {
     query: string | null;
@@ -133,6 +151,9 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     totalInviteRequests,
     pendingInviteRequests,
     inviteRequestsByStatus,
+    totalConversionEvents,
+    conversionEventsByType,
+    recentConversionEvents,
     unreadNotifications,
     carryoverUnread,
     onboardingCounts,
@@ -171,6 +192,35 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     prisma.workspaceInviteRequest.groupBy({
       by: ["status"],
       _count: { _all: true }
+    }),
+    prisma.workspaceConversionEvent.count(),
+    prisma.workspaceConversionEvent.groupBy({
+      by: ["eventType", "recommendedTrack"],
+      _count: { _all: true }
+    }),
+    prisma.workspaceConversionEvent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        eventType: true,
+        source: true,
+        recommendedTrack: true,
+        activeState: true,
+        targetHref: true,
+        createdAt: true,
+        workspace: {
+          select: {
+            name: true
+          }
+        },
+        user: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      }
     }),
     prisma.notification.count({ where: { status: "unread" } }),
     prisma.notification.count({ where: { status: "unread", type: "carryover_tasks" } }),
@@ -244,6 +294,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       select: {
         id: true,
         status: true,
+        pipelineStage: true,
         source: true,
         requestCount: true,
         requestedSeatCount: true,
@@ -351,6 +402,18 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       pending: pendingInviteRequests,
       byStatus: Object.fromEntries(inviteRequestsByStatus.map((row) => [row.status, row._count._all]))
     },
+    conversionEvents: {
+      total: totalConversionEvents,
+      byType: conversionEventsByType.reduce<Record<string, number>>((acc, row) => {
+        acc[row.eventType] = (acc[row.eventType] ?? 0) + row._count._all;
+        return acc;
+      }, {}),
+      byTrack: conversionEventsByType.reduce<Record<string, number>>((acc, row) => {
+        const key = row.recommendedTrack ?? "unknown";
+        acc[key] = (acc[key] ?? 0) + row._count._all;
+        return acc;
+      }, {})
+    },
     onboarding: onboardingStateOrder.map((state) => ({
       state,
       count: onboardingMap.get(state) ?? 0
@@ -394,6 +457,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     recentInviteRequests: recentInviteRequests.map((request) => ({
       id: request.id,
       status: request.status,
+      pipelineStage: request.pipelineStage,
       source: request.source,
       requestCount: request.requestCount,
       requestedSeatCount: request.requestedSeatCount,
@@ -407,6 +471,18 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       workspaceName: request.workspace.name,
       requesterName: request.requestedBy.name,
       requesterEmail: request.requestedBy.email
+    })),
+    recentConversionEvents: recentConversionEvents.map((event) => ({
+      id: event.id,
+      eventType: event.eventType,
+      source: event.source,
+      recommendedTrack: event.recommendedTrack,
+      activeState: event.activeState,
+      targetHref: event.targetHref,
+      createdAt: event.createdAt.toISOString(),
+      workspaceName: event.workspace.name,
+      userName: event.user.name,
+      userEmail: event.user.email
     })),
     search: {
       query: trimmedQuery,

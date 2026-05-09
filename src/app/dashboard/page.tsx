@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { apiFetch } from "@/lib/fetcher";
 import { Badge } from "@/components/ui/badge";
+import { TrackedUpgradeLink } from "@/components/saas/tracked-upgrade-link";
 
 type DashboardResponse = {
   range: "week" | "month";
@@ -332,18 +333,24 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
+            <TrackedUpgradeLink
               href={upgradeSignals.primaryActionHref}
+              source="dashboard-upgrade-path-primary"
+              recommendedTrack={upgradeSignals.recommendedTrack}
+              activeState={upgradeSignals.activeState}
               className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
             >
               {upgradeSignals.primaryActionLabel}
-            </Link>
-            <Link
+            </TrackedUpgradeLink>
+            <TrackedUpgradeLink
               href={upgradeSignals.secondaryActionHref}
+              source="dashboard-upgrade-path-secondary"
+              recommendedTrack={upgradeSignals.recommendedTrack}
+              activeState={upgradeSignals.activeState}
               className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
             >
               {upgradeSignals.secondaryActionLabel}
-            </Link>
+            </TrackedUpgradeLink>
           </div>
         </Card>
       ) : null}

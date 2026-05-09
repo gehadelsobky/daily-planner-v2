@@ -13,6 +13,7 @@ type TeamInviteRequestReviewCardProps = {
   request: {
     id: string;
     status: string;
+    pipelineStage: string | null;
     source: string;
     requestCount: number;
     requestedSeatCount: number;
@@ -44,10 +45,12 @@ function formatDateTime(value: string) {
 export function TeamInviteRequestReviewCard({ request }: TeamInviteRequestReviewCardProps) {
   const router = useRouter();
   const [status, setStatus] = useState(request.status);
+  const [pipelineStage, setPipelineStage] = useState(request.pipelineStage ?? "");
   const [notes, setNotes] = useState(request.notes ?? "");
   const [feedback, setFeedback] = useState<string | null>(null);
   const guidance = getTeamInvitePipelineGuidance({
     status,
+    pipelineStage: pipelineStage || null,
     requestCount: request.requestCount,
     requestedSeatCount: request.requestedSeatCount,
     inviteEmails: request.inviteEmails
@@ -55,18 +58,20 @@ export function TeamInviteRequestReviewCard({ request }: TeamInviteRequestReview
 
   const saveReview = useMutation({
     mutationFn: () =>
-      apiFetch<{ request: { status: string; notes: string | null; updatedAt: string } }>(
+      apiFetch<{ request: { status: string; pipelineStage: string | null; notes: string | null; updatedAt: string } }>(
         `/api/admin/team-invite-requests/${request.id}`,
         {
           method: "PATCH",
           body: JSON.stringify({
             status,
+            pipeline_stage: pipelineStage || null,
             notes
           })
         }
       ),
     onSuccess: (response) => {
       setStatus(response.request.status);
+      setPipelineStage(response.request.pipelineStage ?? "");
       setNotes(response.request.notes ?? "");
       setFeedback("Saved invite-request follow-up.");
       router.refresh();
@@ -83,6 +88,7 @@ export function TeamInviteRequestReviewCard({ request }: TeamInviteRequestReview
         <div className="flex flex-wrap gap-2">
           <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">TEAM INVITE</Badge>
           <Badge>{prettify(status)}</Badge>
+          {pipelineStage ? <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{prettify(pipelineStage)}</Badge> : null}
         </div>
       </div>
 
@@ -120,7 +126,7 @@ export function TeamInviteRequestReviewCard({ request }: TeamInviteRequestReview
         <p className="mt-2 text-sm text-[hsl(var(--foreground))]">{guidance.nextAction}</p>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)_140px]">
+      <div className="mt-4 grid gap-3 lg:grid-cols-[180px_180px_minmax(0,1fr)_140px]">
         <select
           value={status}
           onChange={(event) => setStatus(event.target.value)}
@@ -130,6 +136,17 @@ export function TeamInviteRequestReviewCard({ request }: TeamInviteRequestReview
           <option value="reviewed">Reviewed</option>
           <option value="approved">Approved</option>
           <option value="closed">Closed</option>
+        </select>
+        <select
+          value={pipelineStage}
+          onChange={(event) => setPipelineStage(event.target.value)}
+          className="h-11 rounded-[1rem] border border-border bg-white px-3 text-sm outline-none transition focus:border-[#00b0ff]"
+        >
+          <option value="">No pipeline stage</option>
+          <option value="contacted">Contacted</option>
+          <option value="qualified">Qualified</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="converted">Converted</option>
         </select>
         <Textarea
           value={notes}

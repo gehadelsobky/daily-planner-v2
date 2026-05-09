@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey } from "@/lib/request";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
 import { touchUserActivity } from "@/lib/saas/account-lifecycle";
+import { recordWorkspaceConversionEvent } from "@/lib/saas/conversion-events";
 import { workspaceInviteRequestCreateSchema } from "@/lib/validation/schemas";
 
 function normalizeInviteEmails(values: string[]) {
@@ -60,6 +61,15 @@ export async function POST(req: Request) {
       lastRequestedAt: true,
       updatedAt: true
     }
+  });
+
+  await recordWorkspaceConversionEvent(prisma, {
+    workspaceId: workspace.id,
+    userId: user.id,
+    eventType: "team_invite_requested",
+    source: parsed.data.source,
+    recommendedTrack: "team",
+    activeState: request.status
   });
 
   await touchUserActivity(prisma, user.id);

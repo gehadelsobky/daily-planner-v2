@@ -40,6 +40,7 @@ export async function GET() {
     select: {
       id: true,
       status: true,
+      pipelineStage: true,
       source: true,
       requestCount: true,
       requestedSeatCount: true,
@@ -57,6 +58,7 @@ export async function GET() {
         inviteEmails: Array.isArray(inviteRequest.inviteEmails)
           ? inviteRequest.inviteEmails.filter((item): item is string => typeof item === "string")
           : [],
+        pipelineStage: inviteRequest.pipelineStage,
         lastRequestedAt: inviteRequest.lastRequestedAt.toISOString(),
         updatedAt: inviteRequest.updatedAt.toISOString()
       }
@@ -79,6 +81,7 @@ export async function GET() {
     inviteRequest: normalizedInviteRequest
       ? {
           status: normalizedInviteRequest.status,
+          pipelineStage: normalizedInviteRequest.pipelineStage,
           requestCount: normalizedInviteRequest.requestCount,
           requestedSeatCount: normalizedInviteRequest.requestedSeatCount,
           inviteEmails: normalizedInviteRequest.inviteEmails,

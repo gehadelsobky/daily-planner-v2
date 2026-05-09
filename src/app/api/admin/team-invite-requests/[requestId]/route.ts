@@ -31,11 +31,13 @@ export async function PATCH(req: Request, context: RouteContext) {
     where: { id: requestId },
     data: {
       status: parsed.data.status,
+      pipelineStage: parsed.data.pipeline_stage ?? null,
       notes: (parsed.data.notes ?? "").trim() || null
     },
     select: {
       id: true,
       status: true,
+      pipelineStage: true,
       notes: true,
       updatedAt: true
     }

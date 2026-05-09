@@ -4,6 +4,7 @@ import { parseJson } from "@/lib/http";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { buildRateLimitKey } from "@/lib/request";
 import { requireWorkspaceContext } from "@/lib/saas/workspace-runtime";
+import { recordWorkspaceConversionEvent } from "@/lib/saas/conversion-events";
 import { touchUserActivity } from "@/lib/saas/account-lifecycle";
 import { workspaceInterestCreateSchema } from "@/lib/validation/schemas";
 
@@ -43,6 +44,15 @@ export async function POST(req: Request) {
         increment: 1
       }
     }
+  });
+
+  await recordWorkspaceConversionEvent(prisma, {
+    workspaceId: workspace.id,
+    userId: user.id,
+    eventType: parsed.data.type === "pro" ? "pro_interest_requested" : "team_interest_requested",
+    source: parsed.data.source,
+    recommendedTrack: parsed.data.type,
+    activeState: interest.status
   });
 
   await touchUserActivity(prisma, user.id);
