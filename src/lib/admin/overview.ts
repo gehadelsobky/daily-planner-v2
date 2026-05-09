@@ -59,6 +59,8 @@ export type AdminOverview = {
     status: string;
     source: string;
     requestCount: number;
+    notes: string | null;
+    lastRequestedAt: string;
     updatedAt: string;
     workspaceName: string;
     requesterName: string;
@@ -190,6 +192,8 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
         status: true,
         source: true,
         requestCount: true,
+        notes: true,
+        lastRequestedAt: true,
         updatedAt: true,
         workspace: {
           select: {
@@ -312,16 +316,18 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       userEmail: notification.user.email,
       workspaceName: notification.workspace?.name ?? null
     })),
-    recentInterestRequests: recentInterestRequests.map((request) => ({
-      id: request.id,
-      type: request.type,
-      status: request.status,
-      source: request.source,
-      requestCount: request.requestCount,
-      updatedAt: request.updatedAt.toISOString(),
-      workspaceName: request.workspace.name,
-      requesterName: request.requestedBy.name,
-      requesterEmail: request.requestedBy.email
+      recentInterestRequests: recentInterestRequests.map((request) => ({
+        id: request.id,
+        type: request.type,
+        status: request.status,
+        source: request.source,
+        requestCount: request.requestCount,
+        notes: request.notes,
+        lastRequestedAt: request.lastRequestedAt.toISOString(),
+        updatedAt: request.updatedAt.toISOString(),
+        workspaceName: request.workspace.name,
+        requesterName: request.requestedBy.name,
+        requesterEmail: request.requestedBy.email
     })),
     search: {
       query: trimmedQuery,

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { WorkspaceInterestReviewCard } from "@/components/admin/workspace-interest-review-card";
 import { getSessionUser } from "@/lib/auth/session";
 import { getAdminAccess } from "@/lib/admin/access";
 import { getAdminOverview } from "@/lib/admin/overview";
@@ -203,6 +204,66 @@ export default async function AdminPage({
         </Card>
       </section>
 
+      {query ? (
+        <section className="grid gap-4 lg:grid-cols-2">
+          <Card className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold">Matching Users</p>
+              <p className="text-sm text-muted-foreground">Support lookup for user lifecycle and account status.</p>
+            </div>
+            <div className="space-y-3">
+              {overview.search.users.length ? (
+                overview.search.users.map((matchedUser) => (
+                  <div key={matchedUser.id} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{matchedUser.name}</p>
+                        <p className="text-sm text-muted-foreground">{matchedUser.email}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                          {prettify(matchedUser.onboardingState)}
+                        </Badge>
+                        <Badge>{prettify(matchedUser.accountStatus)}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No users matched this query.</p>
+              )}
+            </div>
+          </Card>
+
+          <Card className="space-y-4">
+            <div>
+              <p className="text-sm font-semibold">Matching Workspaces</p>
+              <p className="text-sm text-muted-foreground">Quick lookup for workspace ownership and current plan state.</p>
+            </div>
+            <div className="space-y-3">
+              {overview.search.workspaces.length ? (
+                overview.search.workspaces.map((workspace) => (
+                  <div key={workspace.id} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{workspace.name}</p>
+                        <p className="text-sm text-muted-foreground">{workspace.ownerEmail}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspace.planCode.toUpperCase()}</Badge>
+                        <Badge>{prettify(workspace.billingStatus)}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No workspaces matched this query.</p>
+              )}
+            </div>
+          </Card>
+        </section>
+      ) : null}
+
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
@@ -231,26 +292,12 @@ export default async function AdminPage({
         <Card className="space-y-4">
           <div>
             <p className="text-sm font-semibold">Recent Plan Interest</p>
-            <p className="text-sm text-muted-foreground">These are the latest upgrade or collaboration signals from real workspaces.</p>
+            <p className="text-sm text-muted-foreground">Review signals, leave internal notes, and move each request through follow-up states.</p>
           </div>
           <div className="space-y-3">
             {overview.recentInterestRequests.length ? (
               overview.recentInterestRequests.map((request) => (
-                <div key={request.id} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">{request.workspaceName}</p>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{request.type.toUpperCase()}</Badge>
-                      <Badge>{prettify(request.status)}</Badge>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {request.requesterName} · {request.requesterEmail}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Source: {request.source} · Requested {request.requestCount} time{request.requestCount === 1 ? "" : "s"} · Updated {formatDateTime(request.updatedAt)}
-                  </p>
-                </div>
+                <WorkspaceInterestReviewCard key={request.id} request={request} />
               ))
             ) : (
               <p className="text-sm text-muted-foreground">No upgrade or Team interest requests have been captured yet.</p>

@@ -255,3 +255,8 @@ export const workspaceInterestCreateSchema = z.object({
   type: z.enum(["pro", "team"]),
   source: z.string().min(2).max(40)
 });
+
+export const workspaceInterestAdminUpdateSchema = z.object({
+  status: z.enum(["pending", "reviewed", "contacted", "closed"]),
+  notes: z.string().max(2000).optional().default("")
+});
