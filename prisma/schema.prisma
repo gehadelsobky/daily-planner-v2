@@ -91,6 +91,13 @@ enum WorkspaceInterestStatus {
   closed
 }
 
+enum WorkspaceInviteRequestStatus {
+  pending
+  reviewed
+  approved
+  closed
+}
+
 enum AccountStatus {
   active
   disabled
@@ -141,6 +148,7 @@ model User {
   ownedWorkspaces  Workspace[]       @relation("WorkspaceOwner")
   workspaceMembers WorkspaceMember[]
   workspaceInterestRequests WorkspaceInterest[] @relation("WorkspaceInterestRequester")
+  workspaceInviteRequests WorkspaceInviteRequest[] @relation("WorkspaceInviteRequester")
 
   @@index([createdAt])
   @@index([accountStatus, createdAt])
@@ -167,6 +175,7 @@ model Workspace {
   xpEvents      XPEvent[]
   notifications Notification[]
   interestRequests WorkspaceInterest[]
+  inviteRequests WorkspaceInviteRequest[]
 
   @@index([ownerUserId])
 }
@@ -239,6 +248,29 @@ model WorkspaceInterest {
   requestedBy User      @relation("WorkspaceInterestRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, type])
+  @@index([status, updatedAt])
+  @@index([requestedByUserId, createdAt])
+  @@index([workspaceId, createdAt])
+}
+
+model WorkspaceInviteRequest {
+  id                String                       @id @default(uuid())
+  workspaceId       String                       @unique
+  requestedByUserId String
+  status            WorkspaceInviteRequestStatus @default(pending)
+  source            String
+  requestCount      Int                          @default(1)
+  requestedSeatCount Int
+  inviteEmails      Json                         @default("[]")
+  message           String?
+  notes             String?
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  lastRequestedAt   DateTime                     @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  requestedBy User      @relation("WorkspaceInviteRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+
   @@index([status, updatedAt])
   @@index([requestedByUserId, createdAt])
   @@index([workspaceId, createdAt])

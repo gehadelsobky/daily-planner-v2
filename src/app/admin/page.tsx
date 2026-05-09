@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceInterestReviewCard } from "@/components/admin/workspace-interest-review-card";
+import { TeamInviteRequestReviewCard } from "@/components/admin/team-invite-request-review-card";
 import { getSessionUser } from "@/lib/auth/session";
 import { getAdminAccess } from "@/lib/admin/access";
 import { getAdminOverview } from "@/lib/admin/overview";
@@ -111,6 +112,11 @@ export default async function AdminPage({
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Upgrade signals</p>
           <p className="text-3xl font-semibold">{overview.interestRequests.total}</p>
           <p className="text-sm text-muted-foreground">{overview.interestRequests.pending} pending follow-up</p>
+        </Card>
+        <Card className="space-y-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Invite requests</p>
+          <p className="text-3xl font-semibold">{overview.inviteRequests.total}</p>
+          <p className="text-sm text-muted-foreground">{overview.inviteRequests.pending} pending seat reviews</p>
         </Card>
       </section>
 
@@ -301,6 +307,46 @@ export default async function AdminPage({
               ))
             ) : (
               <p className="text-sm text-muted-foreground">No upgrade or Team interest requests have been captured yet.</p>
+            )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Team Invite Pipeline</p>
+              <p className="text-sm text-muted-foreground">Track structured requests for seats, invite targets, and rollout preparation.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+              {overview.inviteRequests.pending} pending · {overview.inviteRequests.total} total
+            </Badge>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Pending invite requests</p>
+              <p className="mt-2 text-2xl font-semibold">{overview.inviteRequests.pending}</p>
+            </div>
+            <div className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Total invite requests</p>
+              <p className="mt-2 text-2xl font-semibold">{overview.inviteRequests.total}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold">Recent Team Invite Requests</p>
+            <p className="text-sm text-muted-foreground">Review seat counts, target emails, and internal notes before Team invites go live.</p>
+          </div>
+          <div className="space-y-3">
+            {overview.recentInviteRequests.length ? (
+              overview.recentInviteRequests.map((request) => (
+                <TeamInviteRequestReviewCard key={request.id} request={request} />
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No Team invite requests have been captured yet.</p>
             )}
           </div>
         </Card>

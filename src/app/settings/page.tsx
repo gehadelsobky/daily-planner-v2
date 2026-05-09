@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CountryCodeSelect } from "@/components/ui/country-code-select";
 import { InterestRequestButton } from "@/components/saas/interest-request-button";
+import { TeamInviteRequestForm } from "@/components/saas/team-invite-request-form";
 import { apiFetch } from "@/lib/fetcher";
 import { DEFAULT_PHONE_COUNTRY, getPhoneCountryOption } from "@/lib/phone";
 
@@ -111,6 +112,18 @@ type ProfileResponse = {
       lastRequestedAt: string;
       updatedAt: string;
     }>;
+    inviteRequest: {
+      id: string;
+      status: string;
+      source: string;
+      requestCount: number;
+      requestedSeatCount: number;
+      inviteEmails: string[];
+      message: string | null;
+      notes: string | null;
+      lastRequestedAt: string;
+      updatedAt: string;
+    } | null;
   };
 };
 
@@ -424,6 +437,7 @@ export default function SettingsPage() {
   const workspaceInterestRequests = profile.data?.workspace?.interestRequests ?? [];
   const teamInterestRequest = workspaceInterestRequests.find((request) => request.type === "team");
   const proInterestRequest = workspaceInterestRequests.find((request) => request.type === "pro");
+  const workspaceInviteRequest = profile.data?.workspace?.inviteRequest ?? null;
   const onboardingStateLabel = lifecycle?.onboardingState
     ?.replaceAll("_", " ")
     ?.replace(/\b\w/g, (char) => char.toUpperCase());
@@ -860,6 +874,13 @@ export default function SettingsPage() {
                 ) : null}
               </div>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <TeamInviteRequestForm
+              source="settings-team-invite-request"
+              initialRequest={workspaceInviteRequest}
+            />
           </div>
 
           <div className="mt-4 rounded-[1.5rem] border border-border bg-white/88 p-5">

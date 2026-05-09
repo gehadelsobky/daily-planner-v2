@@ -26,6 +26,10 @@ export type AdminOverview = {
     pending: number;
     byType: Record<string, number>;
   };
+  inviteRequests: {
+    total: number;
+    pending: number;
+  };
   onboarding: Array<{
     state: string;
     count: number;
@@ -59,6 +63,21 @@ export type AdminOverview = {
     status: string;
     source: string;
     requestCount: number;
+    notes: string | null;
+    lastRequestedAt: string;
+    updatedAt: string;
+    workspaceName: string;
+    requesterName: string;
+    requesterEmail: string;
+  }>;
+  recentInviteRequests: Array<{
+    id: string;
+    status: string;
+    source: string;
+    requestCount: number;
+    requestedSeatCount: number;
+    inviteEmails: string[];
+    message: string | null;
     notes: string | null;
     lastRequestedAt: string;
     updatedAt: string;
@@ -110,12 +129,15 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     totalInterestRequests,
     pendingInterestRequests,
     interestRequestsByType,
+    totalInviteRequests,
+    pendingInviteRequests,
     unreadNotifications,
     carryoverUnread,
     onboardingCounts,
     recentUsers,
     recentNotifications,
     recentInterestRequests,
+    recentInviteRequests,
     searchedUsers,
     searchedWorkspaces
   ] = await Promise.all([
@@ -142,6 +164,8 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       by: ["type"],
       _count: { _all: true }
     }),
+    prisma.workspaceInviteRequest.count(),
+    prisma.workspaceInviteRequest.count({ where: { status: "pending" } }),
     prisma.notification.count({ where: { status: "unread" } }),
     prisma.notification.count({ where: { status: "unread", type: "carryover_tasks" } }),
     prisma.user.groupBy({
@@ -192,6 +216,33 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
         status: true,
         source: true,
         requestCount: true,
+        notes: true,
+        lastRequestedAt: true,
+        updatedAt: true,
+        workspace: {
+          select: {
+            name: true
+          }
+        },
+        requestedBy: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      }
+    }),
+    prisma.workspaceInviteRequest.findMany({
+      orderBy: { updatedAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        status: true,
+        source: true,
+        requestCount: true,
+        requestedSeatCount: true,
+        inviteEmails: true,
+        message: true,
         notes: true,
         lastRequestedAt: true,
         updatedAt: true,
@@ -289,6 +340,10 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       pending: pendingInterestRequests,
       byType: Object.fromEntries(interestRequestsByType.map((item) => [item.type, item._count._all]))
     },
+    inviteRequests: {
+      total: totalInviteRequests,
+      pending: pendingInviteRequests
+    },
     onboarding: onboardingStateOrder.map((state) => ({
       state,
       count: onboardingMap.get(state) ?? 0
@@ -316,18 +371,35 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       userEmail: notification.user.email,
       workspaceName: notification.workspace?.name ?? null
     })),
-      recentInterestRequests: recentInterestRequests.map((request) => ({
-        id: request.id,
-        type: request.type,
-        status: request.status,
-        source: request.source,
-        requestCount: request.requestCount,
-        notes: request.notes,
-        lastRequestedAt: request.lastRequestedAt.toISOString(),
-        updatedAt: request.updatedAt.toISOString(),
-        workspaceName: request.workspace.name,
-        requesterName: request.requestedBy.name,
-        requesterEmail: request.requestedBy.email
+    recentInterestRequests: recentInterestRequests.map((request) => ({
+      id: request.id,
+      type: request.type,
+      status: request.status,
+      source: request.source,
+      requestCount: request.requestCount,
+      notes: request.notes,
+      lastRequestedAt: request.lastRequestedAt.toISOString(),
+      updatedAt: request.updatedAt.toISOString(),
+      workspaceName: request.workspace.name,
+      requesterName: request.requestedBy.name,
+      requesterEmail: request.requestedBy.email
+    })),
+    recentInviteRequests: recentInviteRequests.map((request) => ({
+      id: request.id,
+      status: request.status,
+      source: request.source,
+      requestCount: request.requestCount,
+      requestedSeatCount: request.requestedSeatCount,
+      inviteEmails: Array.isArray(request.inviteEmails)
+        ? request.inviteEmails.filter((item): item is string => typeof item === "string")
+        : [],
+      message: request.message,
+      notes: request.notes,
+      lastRequestedAt: request.lastRequestedAt.toISOString(),
+      updatedAt: request.updatedAt.toISOString(),
+      workspaceName: request.workspace.name,
+      requesterName: request.requestedBy.name,
+      requesterEmail: request.requestedBy.email
     })),
     search: {
       query: trimmedQuery,

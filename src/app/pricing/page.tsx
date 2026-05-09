@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getCurrentWorkspaceContextForUser } from "@/lib/saas/workspace-runtime";
 import { InterestRequestButton } from "@/components/saas/interest-request-button";
+import { TeamInviteRequestForm } from "@/components/saas/team-invite-request-form";
 
 const plans = [
   {
@@ -72,6 +73,20 @@ export default async function PricingPage() {
         }
       })
     : [];
+  const inviteRequest = workspaceContext
+    ? await prisma.workspaceInviteRequest.findUnique({
+        where: { workspaceId: workspaceContext.workspace.id },
+        select: {
+          id: true,
+          status: true,
+          requestCount: true,
+          requestedSeatCount: true,
+          inviteEmails: true,
+          message: true,
+          updatedAt: true
+        }
+      })
+    : null;
   const proInterestRequest = interestRequests.find((request) => request.type === "pro");
   const teamInterestRequest = interestRequests.find((request) => request.type === "team");
 
@@ -256,6 +271,26 @@ export default async function PricingPage() {
                 Team interest saved {teamInterestRequest.requestCount} time{teamInterestRequest.requestCount === 1 ? "" : "s"}.
                 Last updated {new Date(teamInterestRequest.updatedAt).toLocaleDateString()}.
               </p>
+            ) : null}
+            {user ? (
+              <div className="mt-5">
+                <TeamInviteRequestForm
+                  source="pricing-team-invite-request"
+                  compact
+                  initialRequest={
+                    inviteRequest
+                      ? {
+                          ...inviteRequest,
+                          inviteEmails: Array.isArray(inviteRequest.inviteEmails)
+                            ? inviteRequest.inviteEmails.filter((item): item is string => typeof item === "string")
+                            : [],
+                          message: inviteRequest.message,
+                          updatedAt: inviteRequest.updatedAt.toISOString()
+                        }
+                      : null
+                  }
+                />
+              </div>
             ) : null}
           </div>
         </section>

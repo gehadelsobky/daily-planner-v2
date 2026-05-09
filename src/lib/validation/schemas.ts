@@ -260,3 +260,15 @@ export const workspaceInterestAdminUpdateSchema = z.object({
   status: z.enum(["pending", "reviewed", "contacted", "closed"]),
   notes: z.string().max(2000).optional().default("")
 });
+
+export const workspaceInviteRequestCreateSchema = z.object({
+  requested_seat_count: z.number().int().min(2).max(50),
+  invite_emails: z.array(z.string().email().max(160)).min(1).max(50),
+  message: z.string().max(2000).optional().default(""),
+  source: z.string().min(2).max(40)
+});
+
+export const workspaceInviteRequestAdminUpdateSchema = z.object({
+  status: z.enum(["pending", "reviewed", "approved", "closed"]),
+  notes: z.string().max(2000).optional().default("")
+});

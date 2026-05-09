@@ -34,6 +34,21 @@ export async function GET() {
       updatedAt: true
     }
   });
+  const inviteRequest = await prisma.workspaceInviteRequest.findUnique({
+    where: { workspaceId: workspaceContext.workspace.id },
+    select: {
+      id: true,
+      status: true,
+      source: true,
+      requestCount: true,
+      requestedSeatCount: true,
+      inviteEmails: true,
+      message: true,
+      notes: true,
+      lastRequestedAt: true,
+      updatedAt: true
+    }
+  });
 
   return Response.json({
     profile: {
@@ -72,7 +87,17 @@ export async function GET() {
         requestCount: request.requestCount,
         lastRequestedAt: request.lastRequestedAt.toISOString(),
         updatedAt: request.updatedAt.toISOString()
-      }))
+      })),
+      inviteRequest: inviteRequest
+        ? {
+            ...inviteRequest,
+            inviteEmails: Array.isArray(inviteRequest.inviteEmails)
+              ? inviteRequest.inviteEmails.filter((item): item is string => typeof item === "string")
+              : [],
+            lastRequestedAt: inviteRequest.lastRequestedAt.toISOString(),
+            updatedAt: inviteRequest.updatedAt.toISOString()
+          }
+        : null
     }
   });
 }
