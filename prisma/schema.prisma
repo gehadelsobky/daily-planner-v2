@@ -156,6 +156,7 @@ model User {
   workspaceInterestRequests WorkspaceInterest[] @relation("WorkspaceInterestRequester")
   workspaceInviteRequests WorkspaceInviteRequest[] @relation("WorkspaceInviteRequester")
   workspaceConversionEvents WorkspaceConversionEvent[] @relation("WorkspaceConversionRequester")
+  adminAuditLogs      AdminAuditLog[]    @relation("AdminAuditActor")
 
   @@index([createdAt])
   @@index([accountStatus, createdAt])
@@ -302,6 +303,22 @@ model WorkspaceConversionEvent {
   @@index([workspaceId, createdAt])
   @@index([source, createdAt])
   @@index([recommendedTrack, createdAt])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  action      String
+  targetType  String
+  targetId    String
+  details     Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  adminUser User @relation("AdminAuditActor", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([action, createdAt])
 }
 
 model ScoreSetting {

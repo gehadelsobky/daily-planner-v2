@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseJson } from "@/lib/http";
 import { requireAdminUser } from "@/lib/admin/access";
+import { recordAdminAuditLog } from "@/lib/admin/audit";
 import { workspaceInterestAdminUpdateSchema } from "@/lib/validation/schemas";
 
 type RouteContext = {
@@ -38,6 +39,17 @@ export async function PATCH(req: Request, context: RouteContext) {
       status: true,
       notes: true,
       updatedAt: true
+    }
+  });
+
+  await recordAdminAuditLog(prisma, {
+    adminUserId: admin.user.id,
+    action: "workspace_interest_updated",
+    targetType: "workspace_interest",
+    targetId: updated.id,
+    details: {
+      status: updated.status,
+      notes: updated.notes
     }
   });
 

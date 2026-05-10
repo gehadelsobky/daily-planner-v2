@@ -85,6 +85,9 @@ export type AdminOverview = {
     totalUnread: number;
     carryoverUnread: number;
   };
+  adminAudit: {
+    totalLast7Days: number;
+  };
   recentUsers: Array<{
     id: string;
     name: string;
@@ -144,6 +147,15 @@ export type AdminOverview = {
     workspaceName: string;
     userName: string;
     userEmail: string;
+  }>;
+  recentAdminAuditLogs: Array<{
+    id: string;
+    action: string;
+    targetType: string;
+    targetId: string;
+    createdAt: string;
+    adminName: string;
+    adminEmail: string;
   }>;
   search: {
     query: string | null;
@@ -208,6 +220,8 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     conversionEventsLast14Days,
     conversionEventsLast30Days,
     recentConversionEvents,
+    totalAdminAuditLast7Days,
+    recentAdminAuditLogs,
     unreadNotifications,
     carryoverUnread,
     onboardingCounts,
@@ -306,6 +320,28 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
           }
         },
         user: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      }
+    }),
+    prisma.adminAuditLog.count({
+      where: {
+        createdAt: { gte: sevenDaysAgo }
+      }
+    }),
+    prisma.adminAuditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        action: true,
+        targetType: true,
+        targetId: true,
+        createdAt: true,
+        adminUser: {
           select: {
             name: true,
             email: true
@@ -793,6 +829,9 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       totalUnread: unreadNotifications,
       carryoverUnread
     },
+    adminAudit: {
+      totalLast7Days: totalAdminAuditLast7Days
+    },
     recentUsers: recentUsers.map((user) => ({
       id: user.id,
       name: user.name,
@@ -854,6 +893,15 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       workspaceName: event.workspace.name,
       userName: event.user.name,
       userEmail: event.user.email
+    })),
+    recentAdminAuditLogs: recentAdminAuditLogs.map((item) => ({
+      id: item.id,
+      action: item.action,
+      targetType: item.targetType,
+      targetId: item.targetId,
+      createdAt: item.createdAt.toISOString(),
+      adminName: item.adminUser.name,
+      adminEmail: item.adminUser.email
     })),
     search: {
       query: trimmedQuery,

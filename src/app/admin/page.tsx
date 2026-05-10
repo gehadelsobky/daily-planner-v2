@@ -137,6 +137,11 @@ export default async function AdminPage({
           <p className="text-3xl font-semibold">{overview.inviteRequests.total}</p>
           <p className="text-sm text-muted-foreground">{overview.inviteRequests.pending} pending seat reviews</p>
         </Card>
+        <Card className="space-y-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Admin actions</p>
+          <p className="text-3xl font-semibold">{overview.adminAudit.totalLast7Days}</p>
+          <p className="text-sm text-muted-foreground">Tracked updates in the last 7 days</p>
+        </Card>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -350,6 +355,65 @@ export default async function AdminPage({
             ) : (
               <p className="text-sm text-muted-foreground">No source data has been captured yet.</p>
             )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold">Recent Admin Audit Log</p>
+            <p className="text-sm text-muted-foreground">Track who changed internal request states and when.</p>
+          </div>
+          <div className="space-y-3">
+            {overview.recentAdminAuditLogs.length ? (
+              overview.recentAdminAuditLogs.map((log) => (
+                <div key={log.id} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{prettify(log.action)}</p>
+                      <p className="text-sm text-muted-foreground">{log.adminName} · {log.adminEmail}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{prettify(log.targetType)}</Badge>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Target: {log.targetId} · {formatDateTime(log.createdAt)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No admin audit events have been captured yet.</p>
+            )}
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold">Why This Matters</p>
+            <p className="text-sm text-muted-foreground">A small audit layer makes support and operations safer as the SaaS grows.</p>
+          </div>
+          <div className="space-y-3">
+            {[
+              {
+                title: "Who changed a request",
+                body: "When Team and Pro demand grows, support needs a clean trace of who updated statuses or notes."
+              },
+              {
+                title: "Safer follow-up workflow",
+                body: "Audit logs reduce confusion when more than one admin reviews the same request pipeline."
+              },
+              {
+                title: "Foundation for richer ops",
+                body: "This creates a clean path toward broader admin reporting, alerting, and support accountability."
+              }
+            ].map((item) => (
+              <div key={item.title} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                <p className="font-medium">{item.title}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
+              </div>
+            ))}
           </div>
         </Card>
       </section>
