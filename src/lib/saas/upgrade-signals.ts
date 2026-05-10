@@ -45,7 +45,10 @@ type UpgradeSignalInput = {
 export type UpgradeSignalSummary = {
   headline: string;
   description: string;
+  contextLabel: string;
+  urgencyLabel: string;
   primaryActionLabel: string;
+  primaryActionShortLabel: string;
   primaryActionHref: string;
   secondaryActionLabel: string;
   secondaryActionHref: string;
@@ -83,7 +86,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       return {
         headline: "Team invite request approved",
         description: `We captured ${teamInviteRequest.requestedSeatCount} requested seats. Review the workspace team section while rollout details are finalized.`,
+        contextLabel: "Team rollout approved",
+        urgencyLabel: "High-intent workspace",
         primaryActionLabel: "Review Team request",
+        primaryActionShortLabel: "Review Team",
         primaryActionHref: "/settings#workspace-members",
         secondaryActionLabel: "Compare Team plan",
         secondaryActionHref: "/pricing",
@@ -96,7 +102,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       return {
         headline: "Team invite request under review",
         description: `Your workspace requested ${teamInviteRequest.requestedSeatCount} seats. Keep the invite list updated while we review rollout timing.`,
+        contextLabel: "Team request in review",
+        urgencyLabel: "Admin follow-up active",
         primaryActionLabel: "Review Team request",
+        primaryActionShortLabel: "Review Team",
         primaryActionHref: "/settings#workspace-members",
         secondaryActionLabel: "Open Team pricing",
         secondaryActionHref: "/pricing",
@@ -109,7 +118,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       return {
         headline: "Team rollout contact started",
         description: "We have started outreach for this Team request. Keep the seat list current while rollout details are discussed.",
+        contextLabel: "Team outreach started",
+        urgencyLabel: "Collaboration signal active",
         primaryActionLabel: "Review Team request",
+        primaryActionShortLabel: "Open Team",
         primaryActionHref: "/settings#workspace-members",
         secondaryActionLabel: "Open Team pricing",
         secondaryActionHref: "/pricing",
@@ -122,7 +134,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       return {
         headline: "Team request qualified",
         description: `This workspace looks like a strong Team candidate. Keep the requested ${teamInviteRequest.requestedSeatCount} seats and invite list aligned while rollout is finalized.`,
+        contextLabel: "Qualified for Team",
+        urgencyLabel: "Best next step: Team",
         primaryActionLabel: "Review Team request",
+        primaryActionShortLabel: "Team next",
         primaryActionHref: "/settings#workspace-members",
         secondaryActionLabel: "Compare Team plan",
         secondaryActionHref: "/pricing",
@@ -135,7 +150,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       return {
         headline: "Team onboarding scheduled",
         description: "This Team request has moved into scheduling. Keep the invite emails updated so the rollout can start without rework.",
+        contextLabel: "Onboarding scheduled",
+        urgencyLabel: "Invite list should stay current",
         primaryActionLabel: "Review Team request",
+        primaryActionShortLabel: "Review Team",
         primaryActionHref: "/settings#workspace-members",
         secondaryActionLabel: "Open Team pricing",
         secondaryActionHref: "/pricing",
@@ -148,7 +166,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       return {
         headline: "Team request closed",
         description: "This Team invite request was closed. You can submit a fresh request anytime if your collaboration plans change.",
+        contextLabel: "Team request closed",
+        urgencyLabel: "Re-open when needed",
         primaryActionLabel: "Open Team pricing",
+        primaryActionShortLabel: "Re-open Team",
         primaryActionHref: "/pricing",
         secondaryActionLabel: "Request Team again",
         secondaryActionHref: "/settings#workspace-members",
@@ -161,7 +182,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
       return {
         headline: "Team rollout converted",
         description: "This workspace has already moved through the Team rollout pipeline. Collaboration features can be finalized from the workspace settings path later.",
+        contextLabel: "Converted through Team pipeline",
+        urgencyLabel: "Collaboration-ready workspace",
         primaryActionLabel: "Review Team request",
+        primaryActionShortLabel: "Team live",
         primaryActionHref: "/settings#workspace-members",
         secondaryActionLabel: "Open Team pricing",
         secondaryActionHref: "/pricing",
@@ -173,7 +197,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
     return {
       headline: "Team invite request saved",
       description: `Your workspace is in the Team rollout queue with ${teamInviteRequest.requestedSeatCount} requested seats. Keep the request current from Settings.`,
+      contextLabel: "Team request saved",
+      urgencyLabel: "Waiting for rollout follow-up",
       primaryActionLabel: "Manage Team request",
+      primaryActionShortLabel: "Manage Team",
       primaryActionHref: "/settings#workspace-members",
       secondaryActionLabel: "Compare Team plan",
       secondaryActionHref: "/pricing",
@@ -186,7 +213,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
     return {
       headline: "Team interest already saved",
       description: "You already signaled that this workspace will need collaboration. The next step is to submit a structured Team invite request when seats are clearer.",
+      contextLabel: "Team demand captured",
+      urgencyLabel: "Next step: seat planning",
       primaryActionLabel: "Request Team access",
+      primaryActionShortLabel: "Plan Team",
       primaryActionHref: "/settings#workspace-members",
       secondaryActionLabel: "Compare Team plan",
       secondaryActionHref: "/pricing",
@@ -199,7 +229,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
     return {
       headline: "Pro interest already saved",
       description: "Your Pro waitlist request is already captured. Use Pricing to review what Pro will unlock next for this workspace.",
+      contextLabel: "Pro demand captured",
+      urgencyLabel: "Good fit for deeper insight",
       primaryActionLabel: "Review Pro path",
+      primaryActionShortLabel: "Review Pro",
       primaryActionHref: "/pricing",
       secondaryActionLabel: "See workspace settings",
       secondaryActionHref: "/settings#workspace-settings",
@@ -212,7 +245,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
     return {
       headline: "You are close to the Free plan edge",
       description: "This workspace is nearing its current limits. Pro is the next clean unlock for analytics depth, exports, and more habit capacity.",
+      contextLabel: "Near Free limit",
+      urgencyLabel: "Best next step: Pro",
       primaryActionLabel: "Join Pro waitlist",
+      primaryActionShortLabel: "Pro next",
       primaryActionHref: "/pricing",
       secondaryActionLabel: "Review plan limits",
       secondaryActionHref: "/settings#workspace-settings",
@@ -225,7 +261,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
     return {
       headline: "This workspace is Team-ready",
       description: "The product foundation already supports collaboration. When you are ready to add people, start with a Team request from Settings.",
+      contextLabel: "Team-ready foundation",
+      urgencyLabel: "Best next step: Team",
       primaryActionLabel: "Request Team access",
+      primaryActionShortLabel: "Team next",
       primaryActionHref: "/settings#workspace-members",
       secondaryActionLabel: "Compare plans",
       secondaryActionHref: "/pricing",
@@ -237,7 +276,10 @@ export function getUpgradeSignalSummary(input: UpgradeSignalInput): UpgradeSigna
   return {
     headline: "Your workspace is on Free",
     description: "Keep using the full planning core now, then signal Pro or Team when you want deeper insights or collaboration.",
+    contextLabel: "Healthy Free workspace",
+    urgencyLabel: "No immediate pressure",
     primaryActionLabel: "Compare plans",
+    primaryActionShortLabel: "See plans",
     primaryActionHref: "/pricing",
     secondaryActionLabel: "Review workspace settings",
     secondaryActionHref: "/settings#workspace-settings",

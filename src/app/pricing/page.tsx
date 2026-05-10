@@ -160,6 +160,12 @@ export default async function PricingPage() {
                   <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[hsl(var(--foreground))]">
                     Recommended next: {upgradeSignals.recommendedTrack.toUpperCase()}
                   </span>
+                  <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-[hsl(var(--foreground))]">
+                    {upgradeSignals.contextLabel}
+                  </span>
+                  <span className="rounded-full bg-[rgba(31,217,181,0.14)] px-3 py-1 text-xs font-semibold text-[#0a0087]">
+                    {upgradeSignals.urgencyLabel}
+                  </span>
                 </div>
                 <div>
                   <h2 className="text-3xl font-semibold leading-tight text-[hsl(var(--foreground))]">

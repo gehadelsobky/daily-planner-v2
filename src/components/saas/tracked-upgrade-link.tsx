@@ -9,7 +9,7 @@ type TrackedUpgradeLinkProps = {
   activeState?: string;
   className?: string;
   children: React.ReactNode;
-};
+} & Omit<React.ComponentProps<typeof Link>, "href" | "className" | "children">;
 
 export function TrackedUpgradeLink({
   href,
@@ -17,7 +17,8 @@ export function TrackedUpgradeLink({
   recommendedTrack,
   activeState,
   className,
-  children
+  children,
+  ...rest
 }: TrackedUpgradeLinkProps) {
   const trackClick = () => {
     const payload = JSON.stringify({
@@ -43,7 +44,7 @@ export function TrackedUpgradeLink({
   };
 
   return (
-    <Link href={href} className={className} onClick={trackClick}>
+    <Link href={href} className={className} onClick={trackClick} {...rest}>
       {children}
     </Link>
   );

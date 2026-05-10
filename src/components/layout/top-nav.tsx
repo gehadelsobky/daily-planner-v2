@@ -32,7 +32,10 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
           usage: { habitsCount: number; teamMembersCount: number };
           entitlements: { maxHabits: number | "unlimited" };
           upgradeSignals: {
+            contextLabel: string;
+            urgencyLabel: string;
             primaryActionLabel: string;
+            primaryActionShortLabel: string;
             primaryActionHref: string;
             activeState: string;
             recommendedTrack: "pro" | "team";
@@ -169,8 +172,9 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
                           ? "bg-[#1745C7] text-white hover:bg-[#0a0087]"
                           : "border border-[rgba(0,176,255,0.22)] bg-[rgba(0,176,255,0.08)] text-[#1745C7] hover:border-[#00b0ff]"
                       }`}
+                      title={`${upgradeSignals.contextLabel} · ${upgradeSignals.urgencyLabel}`}
                     >
-                      {upgradeSignals.activeState === "none" ? "Upgrade" : upgradeSignals.primaryActionLabel}
+                      {upgradeSignals.activeState === "none" ? upgradeSignals.primaryActionShortLabel : upgradeSignals.primaryActionLabel}
                     </TrackedUpgradeLink>
                   ) : null}
                 </div>

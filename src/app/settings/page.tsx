@@ -129,7 +129,10 @@ type ProfileResponse = {
     upgradeSignals: {
       headline: string;
       description: string;
+      contextLabel: string;
+      urgencyLabel: string;
       primaryActionLabel: string;
+      primaryActionShortLabel: string;
       primaryActionHref: string;
       secondaryActionLabel: string;
       secondaryActionHref: string;
@@ -614,9 +617,11 @@ export default function SettingsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge>{workspacePlan} plan</Badge>
+                <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{upgradeSignals.contextLabel}</Badge>
                 <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
                   Track {upgradeSignals.recommendedTrack.toUpperCase()}
                 </Badge>
+                <Badge className="bg-[rgba(31,217,181,0.14)] text-[#0a0087] shadow-none">{upgradeSignals.urgencyLabel}</Badge>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
