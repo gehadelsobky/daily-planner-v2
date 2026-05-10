@@ -50,6 +50,16 @@ export type AdminOverview = {
     teamInterest: number;
     teamInvite: number;
     totalSignals: number;
+    clickToProRatio: number;
+    clickToTeamRatio: number;
+    clickToInviteRatio: number;
+  }>;
+  conversionTrends: Array<{
+    day: string;
+    ctaClicks: number;
+    proInterestRequests: number;
+    teamInterestRequests: number;
+    teamInviteRequests: number;
   }>;
   onboarding: Array<{
     state: string;
@@ -142,11 +152,21 @@ function formatDate(date: Date | null) {
   return date ? date.toISOString() : null;
 }
 
+function formatDayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function safeRatio(numerator: number, denominator: number) {
+  if (!denominator) return 0;
+  return Math.round((numerator / denominator) * 100);
+}
+
 export async function getAdminOverview(prisma: DbClient, query?: string): Promise<AdminOverview> {
   const trimmedQuery = query?.trim() || null;
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
   const [
     totalUsers,
@@ -169,6 +189,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     totalConversionEvents,
     conversionEventsByType,
     conversionEventsBySource,
+    conversionEventsLast14Days,
     recentConversionEvents,
     unreadNotifications,
     carryoverUnread,
@@ -217,6 +238,13 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     prisma.workspaceConversionEvent.groupBy({
       by: ["source", "eventType"],
       _count: { _all: true }
+    }),
+    prisma.workspaceConversionEvent.findMany({
+      where: { createdAt: { gte: fourteenDaysAgo } },
+      select: {
+        eventType: true,
+        createdAt: true
+      }
     }),
     prisma.workspaceConversionEvent.findMany({
       orderBy: { createdAt: "desc" },
@@ -411,6 +439,9 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
         teamInterest: number;
         teamInvite: number;
         totalSignals: number;
+        clickToProRatio: number;
+        clickToTeamRatio: number;
+        clickToInviteRatio: number;
       }
     >
   >((acc, row) => {
@@ -422,7 +453,10 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
         proInterest: 0,
         teamInterest: 0,
         teamInvite: 0,
-        totalSignals: 0
+        totalSignals: 0,
+        clickToProRatio: 0,
+        clickToTeamRatio: 0,
+        clickToInviteRatio: 0
       };
 
     if (row.eventType === "upgrade_cta_clicked") current.clicks += row._count._all;
@@ -434,6 +468,12 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     return acc;
   }, {});
   const sourcePerformance = Object.values(sourcePerformanceMap)
+    .map((item) => ({
+      ...item,
+      clickToProRatio: safeRatio(item.proInterest, item.clicks),
+      clickToTeamRatio: safeRatio(item.teamInterest, item.clicks),
+      clickToInviteRatio: safeRatio(item.teamInvite, item.clicks)
+    }))
     .sort((a, b) => b.totalSignals - a.totalSignals)
     .slice(0, 8);
   const teamPipelineActive = recentInviteRequests.filter(
@@ -443,6 +483,41 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       request.pipelineStage === "scheduled" ||
       request.pipelineStage === "converted"
   ).length;
+  const conversionTrendMap = new Map<
+    string,
+    {
+      day: string;
+      ctaClicks: number;
+      proInterestRequests: number;
+      teamInterestRequests: number;
+      teamInviteRequests: number;
+    }
+  >();
+
+  for (let offset = 13; offset >= 0; offset -= 1) {
+    const date = new Date(now.getTime() - offset * 24 * 60 * 60 * 1000);
+    const day = formatDayKey(date);
+    conversionTrendMap.set(day, {
+      day,
+      ctaClicks: 0,
+      proInterestRequests: 0,
+      teamInterestRequests: 0,
+      teamInviteRequests: 0
+    });
+  }
+
+  for (const event of conversionEventsLast14Days) {
+    const day = formatDayKey(event.createdAt);
+    const current = conversionTrendMap.get(day);
+    if (!current) continue;
+
+    if (event.eventType === "upgrade_cta_clicked") current.ctaClicks += 1;
+    if (event.eventType === "pro_interest_requested") current.proInterestRequests += 1;
+    if (event.eventType === "team_interest_requested") current.teamInterestRequests += 1;
+    if (event.eventType === "team_invite_requested") current.teamInviteRequests += 1;
+  }
+
+  const conversionTrends = Array.from(conversionTrendMap.values());
 
   return {
     generatedAt: now.toISOString(),
@@ -486,6 +561,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       teamPipelineActive
     },
     sourcePerformance,
+    conversionTrends,
     onboarding: onboardingStateOrder.map((state) => ({
       state,
       count: onboardingMap.get(state) ?? 0

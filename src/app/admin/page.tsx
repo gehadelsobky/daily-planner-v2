@@ -30,6 +30,12 @@ function formatSourceLabel(value: string) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function ratioTone(value: number) {
+  if (value >= 40) return "text-emerald-700";
+  if (value >= 20) return "text-sky-700";
+  return "text-muted-foreground";
+}
+
 export default async function AdminPage({
   searchParams
 }: {
@@ -337,6 +343,86 @@ export default async function AdminPage({
               ))
             ) : (
               <p className="text-sm text-muted-foreground">No source data has been captured yet.</p>
+            )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Conversion Trend By Day</p>
+              <p className="text-sm text-muted-foreground">Last 14 days of upgrade intent so we can spot momentum or drop-off early.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">14 day window</Badge>
+          </div>
+          <div className="space-y-2">
+            {overview.conversionTrends.map((trend) => {
+              const signalTotal =
+                trend.ctaClicks + trend.proInterestRequests + trend.teamInterestRequests + trend.teamInviteRequests;
+              return (
+                <div
+                  key={trend.day}
+                  className="grid gap-3 rounded-[1rem] border border-border bg-white/88 px-4 py-3 md:grid-cols-[120px_minmax(0,1fr)] md:items-center"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{new Date(trend.day).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</p>
+                    <p className="text-xs text-muted-foreground">{signalTotal} total signals</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">Clicks: {trend.ctaClicks}</Badge>
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">Pro: {trend.proInterestRequests}</Badge>
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">Team: {trend.teamInterestRequests}</Badge>
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">Invites: {trend.teamInviteRequests}</Badge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Source To Interest Ratios</p>
+              <p className="text-sm text-muted-foreground">Understand which surfaces convert curiosity into stronger upgrade intent.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+              {overview.sourcePerformance.length} ranked sources
+            </Badge>
+          </div>
+          <div className="space-y-3">
+            {overview.sourcePerformance.length ? (
+              overview.sourcePerformance.map((source) => (
+                <div key={source.source} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{formatSourceLabel(source.source)}</p>
+                      <p className="text-xs text-muted-foreground">{source.clicks} CTA clicks captured</p>
+                    </div>
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                      {source.totalSignals} total signals
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                    <div className="rounded-[0.9rem] border border-border/80 bg-white px-3 py-2">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Click → Pro</p>
+                      <p className={`mt-1 text-xl font-semibold ${ratioTone(source.clickToProRatio)}`}>{source.clickToProRatio}%</p>
+                    </div>
+                    <div className="rounded-[0.9rem] border border-border/80 bg-white px-3 py-2">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Click → Team</p>
+                      <p className={`mt-1 text-xl font-semibold ${ratioTone(source.clickToTeamRatio)}`}>{source.clickToTeamRatio}%</p>
+                    </div>
+                    <div className="rounded-[0.9rem] border border-border/80 bg-white px-3 py-2">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Click → Invite</p>
+                      <p className={`mt-1 text-xl font-semibold ${ratioTone(source.clickToInviteRatio)}`}>{source.clickToInviteRatio}%</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No ratios yet. Once CTA clicks and requests accumulate, this panel will show which surfaces convert best.</p>
             )}
           </div>
         </Card>
