@@ -36,6 +36,21 @@ export type AdminOverview = {
     byType: Record<string, number>;
     byTrack: Record<string, number>;
   };
+  conversionFunnel: {
+    ctaClicks: number;
+    proInterestRequests: number;
+    teamInterestRequests: number;
+    teamInviteRequests: number;
+    teamPipelineActive: number;
+  };
+  sourcePerformance: Array<{
+    source: string;
+    clicks: number;
+    proInterest: number;
+    teamInterest: number;
+    teamInvite: number;
+    totalSignals: number;
+  }>;
   onboarding: Array<{
     state: string;
     count: number;
@@ -153,6 +168,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     inviteRequestsByStatus,
     totalConversionEvents,
     conversionEventsByType,
+    conversionEventsBySource,
     recentConversionEvents,
     unreadNotifications,
     carryoverUnread,
@@ -196,6 +212,10 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     prisma.workspaceConversionEvent.count(),
     prisma.workspaceConversionEvent.groupBy({
       by: ["eventType", "recommendedTrack"],
+      _count: { _all: true }
+    }),
+    prisma.workspaceConversionEvent.groupBy({
+      by: ["source", "eventType"],
       _count: { _all: true }
     }),
     prisma.workspaceConversionEvent.findMany({
@@ -372,6 +392,57 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
   ];
 
   const onboardingMap = new Map(onboardingCounts.map((item) => [item.onboardingState, item._count._all]));
+  const conversionByType = conversionEventsByType.reduce<Record<string, number>>((acc, row) => {
+    acc[row.eventType] = (acc[row.eventType] ?? 0) + row._count._all;
+    return acc;
+  }, {});
+  const conversionByTrack = conversionEventsByType.reduce<Record<string, number>>((acc, row) => {
+    const key = row.recommendedTrack ?? "unknown";
+    acc[key] = (acc[key] ?? 0) + row._count._all;
+    return acc;
+  }, {});
+  const sourcePerformanceMap = conversionEventsBySource.reduce<
+    Record<
+      string,
+      {
+        source: string;
+        clicks: number;
+        proInterest: number;
+        teamInterest: number;
+        teamInvite: number;
+        totalSignals: number;
+      }
+    >
+  >((acc, row) => {
+    const current =
+      acc[row.source] ??
+      {
+        source: row.source,
+        clicks: 0,
+        proInterest: 0,
+        teamInterest: 0,
+        teamInvite: 0,
+        totalSignals: 0
+      };
+
+    if (row.eventType === "upgrade_cta_clicked") current.clicks += row._count._all;
+    if (row.eventType === "pro_interest_requested") current.proInterest += row._count._all;
+    if (row.eventType === "team_interest_requested") current.teamInterest += row._count._all;
+    if (row.eventType === "team_invite_requested") current.teamInvite += row._count._all;
+    current.totalSignals += row._count._all;
+    acc[row.source] = current;
+    return acc;
+  }, {});
+  const sourcePerformance = Object.values(sourcePerformanceMap)
+    .sort((a, b) => b.totalSignals - a.totalSignals)
+    .slice(0, 8);
+  const teamPipelineActive = recentInviteRequests.filter(
+    (request) =>
+      request.pipelineStage === "contacted" ||
+      request.pipelineStage === "qualified" ||
+      request.pipelineStage === "scheduled" ||
+      request.pipelineStage === "converted"
+  ).length;
 
   return {
     generatedAt: now.toISOString(),
@@ -404,16 +475,17 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     },
     conversionEvents: {
       total: totalConversionEvents,
-      byType: conversionEventsByType.reduce<Record<string, number>>((acc, row) => {
-        acc[row.eventType] = (acc[row.eventType] ?? 0) + row._count._all;
-        return acc;
-      }, {}),
-      byTrack: conversionEventsByType.reduce<Record<string, number>>((acc, row) => {
-        const key = row.recommendedTrack ?? "unknown";
-        acc[key] = (acc[key] ?? 0) + row._count._all;
-        return acc;
-      }, {})
+      byType: conversionByType,
+      byTrack: conversionByTrack
     },
+    conversionFunnel: {
+      ctaClicks: conversionByType.upgrade_cta_clicked ?? 0,
+      proInterestRequests: conversionByType.pro_interest_requested ?? 0,
+      teamInterestRequests: conversionByType.team_interest_requested ?? 0,
+      teamInviteRequests: conversionByType.team_invite_requested ?? 0,
+      teamPipelineActive
+    },
+    sourcePerformance,
     onboarding: onboardingStateOrder.map((state) => ({
       state,
       count: onboardingMap.get(state) ?? 0

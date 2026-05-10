@@ -23,6 +23,13 @@ function prettify(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function formatSourceLabel(value: string) {
+  return value
+    .replaceAll("-", " ")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default async function AdminPage({
   searchParams
 }: {
@@ -269,6 +276,71 @@ export default async function AdminPage({
           </Card>
         </section>
       ) : null}
+
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Conversion Funnel</p>
+              <p className="text-sm text-muted-foreground">Track how upgrade intent moves from click to qualified Team demand.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+              {overview.conversionFunnel.ctaClicks} CTA clicks
+            </Badge>
+          </div>
+          <div className="grid gap-3 md:grid-cols-5">
+            {[
+              { label: "CTA clicks", value: overview.conversionFunnel.ctaClicks },
+              { label: "Pro interest", value: overview.conversionFunnel.proInterestRequests },
+              { label: "Team interest", value: overview.conversionFunnel.teamInterestRequests },
+              { label: "Team invite", value: overview.conversionFunnel.teamInviteRequests },
+              { label: "Pipeline active", value: overview.conversionFunnel.teamPipelineActive }
+            ].map((item) => (
+              <div key={item.label} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                <p className="mt-2 text-2xl font-semibold">{item.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-[1rem] border border-border bg-white/88 px-4 py-3 text-sm text-muted-foreground">
+            Use this sequence to see whether the bottleneck is weak CTA placement, weak interest conversion, or team follow-up friction.
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Top Upgrade Sources</p>
+              <p className="text-sm text-muted-foreground">See which surfaces are generating the strongest intent signals.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+              {overview.sourcePerformance.length} active sources
+            </Badge>
+          </div>
+          <div className="space-y-3">
+            {overview.sourcePerformance.length ? (
+              overview.sourcePerformance.map((source) => (
+                <div key={source.source} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{formatSourceLabel(source.source)}</p>
+                    <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                      {source.totalSignals} signals
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge>Clicks: {source.clicks}</Badge>
+                    <Badge>Pro: {source.proInterest}</Badge>
+                    <Badge>Team: {source.teamInterest}</Badge>
+                    <Badge>Invites: {source.teamInvite}</Badge>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No source data has been captured yet.</p>
+            )}
+          </div>
+        </Card>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">

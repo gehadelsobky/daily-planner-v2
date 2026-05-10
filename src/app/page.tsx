@@ -133,6 +133,48 @@ export default async function HomePage() {
           ))}
         </section>
 
+        <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[2rem] border border-[hsl(var(--border)/0.75)] bg-white/95 p-7 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#1745C7]">Why teams wait to upgrade</p>
+            <div className="mt-5 space-y-4">
+              {[
+                "Free is enough to validate the daily workflow before a pricing decision.",
+                "Pro matters when analytics, monthly review, and exports become the next bottleneck.",
+                "Team matters when shared visibility and invites become part of daily execution."
+              ].map((item) => (
+                <div key={item} className="rounded-[1.25rem] border border-[hsl(var(--border)/0.75)] bg-[rgba(248,251,255,0.92)] px-4 py-4 text-sm leading-7 text-[hsl(var(--muted-foreground))]">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-[rgba(0,176,255,0.22)] bg-[linear-gradient(135deg,rgba(23,69,199,0.10),rgba(0,176,255,0.08),rgba(31,217,181,0.10))] p-7 shadow-[0_22px_54px_rgba(15,23,42,0.08)]">
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#1745C7]">Commercial path</p>
+            <h2 className="mt-4 text-3xl font-semibold leading-tight text-[hsl(var(--foreground))]">
+              Start with a free personal workspace, then upgrade only when the next constraint is real.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-[hsl(var(--muted-foreground))]">
+              We are deliberately building the commercial layer around real product behavior. That means clearer upgrade
+              timing, better Pro packaging, and Team rollout that follows actual workspace demand.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href="/pricing"
+                className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+              >
+                Explore the upgrade path
+              </Link>
+              <Link
+                href="/register"
+                className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+              >
+                Create your free workspace
+              </Link>
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-[2rem] border border-[hsl(var(--border)/0.75)] bg-[linear-gradient(135deg,rgba(23,69,199,0.94),rgba(10,0,135,0.96))] p-8 text-white shadow-[0_28px_70px_rgba(10,0,135,0.24)] lg:p-10">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>

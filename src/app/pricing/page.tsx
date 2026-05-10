@@ -136,6 +136,17 @@ export default async function PricingPage() {
             The product is live on Free now. Pro and Team are already reflected in the SaaS foundation so future upgrades
             can arrive cleanly without reworking your workflow.
           </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <span className="rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-[#1745C7] shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+              No card required
+            </span>
+            <span className="rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-[#0a0087] shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+              Free workspace live now
+            </span>
+            <span className="rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-[#0a0087] shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+              Pro and Team shaped from real usage
+            </span>
+          </div>
         </div>
 
         {user && workspaceContext && upgradeSignals ? (
@@ -253,6 +264,31 @@ export default async function PricingPage() {
               </Link>
             </div>
           </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-3">
+          {[
+            {
+              title: "Stay on Free while the core matures",
+              body: "Use the full planning system now. The product is already useful without needing a billing step or a plan decision upfront."
+            },
+            {
+              title: "Move to Pro when insight becomes the bottleneck",
+              body: "If habits, analytics, monthly review, and exports become the next constraint, Pro is the clean individual upgrade path."
+            },
+            {
+              title: "Move to Team when collaboration becomes real",
+              body: "When you know who needs access and how many seats you need, Team requests and invite planning are already built into the product."
+            }
+          ].map((item) => (
+            <div
+              key={item.title}
+              className="rounded-[1.75rem] border border-[hsl(var(--border)/0.75)] bg-white/95 p-6 shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+            >
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#1745C7]">{item.title}</p>
+              <p className="mt-4 text-sm leading-7 text-[hsl(var(--muted-foreground))]">{item.body}</p>
+            </div>
+          ))}
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
