@@ -23,7 +23,7 @@ export function TopNav({ loggedIn }: { loggedIn: boolean }) {
       apiFetch<{
         admin?: {
           isAdmin: boolean;
-          accessMode: "configured" | "local_fallback" | "none";
+          accessMode: "system_role" | "configured" | "local_fallback" | "none";
         };
         workspace: {
           name: string;

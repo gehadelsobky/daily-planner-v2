@@ -105,6 +105,11 @@ enum AccountStatus {
   pending_verification
 }
 
+enum SystemRole {
+  user
+  super_admin
+}
+
 enum OnboardingState {
   not_started
   profile_configured
@@ -133,6 +138,7 @@ model User {
   lastLoginAt         DateTime?
   lastActiveAt        DateTime?
   accountStatus       AccountStatus    @default(active)
+  systemRole          SystemRole       @default(user)
   onboardingState     OnboardingState  @default(not_started)
   onboardingCompletedAt DateTime?
   createdAt           DateTime  @default(now())

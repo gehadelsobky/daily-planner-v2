@@ -1,4 +1,4 @@
-import { AccountStatus, User } from "@prisma/client";
+import { AccountStatus, SystemRole, User } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/guard";
 
@@ -15,16 +15,18 @@ function isLocalAdminFallbackEnabled() {
   return appUrl.includes("localhost") || appUrl.includes("127.0.0.1");
 }
 
-export function getAdminAccess(user: Pick<User, "email" | "accountStatus">) {
+export function getAdminAccess(user: Pick<User, "email" | "accountStatus" | "systemRole">) {
   const configuredAdmins = getConfiguredAdminEmails();
   const normalizedEmail = user.email.trim().toLowerCase();
+  const isSuperAdmin = user.systemRole === SystemRole.super_admin;
   const isConfiguredAdmin = configuredAdmins.includes(normalizedEmail);
   const isFallbackAdmin = configuredAdmins.length === 0 && isLocalAdminFallbackEnabled();
-  const isAllowed = user.accountStatus === AccountStatus.active && (isConfiguredAdmin || isFallbackAdmin);
+  const isAllowed =
+    user.accountStatus === AccountStatus.active && (isSuperAdmin || isConfiguredAdmin || isFallbackAdmin);
 
   return {
     isAdmin: isAllowed,
-    accessMode: isConfiguredAdmin ? "configured" : isFallbackAdmin ? "local_fallback" : "none"
+    accessMode: isSuperAdmin ? "system_role" : isConfiguredAdmin ? "configured" : isFallbackAdmin ? "local_fallback" : "none"
   } as const;
 }
 

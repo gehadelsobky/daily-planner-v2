@@ -30,6 +30,7 @@
     "prisma:backfill-workspaces": "tsx prisma/backfill-personal-workspaces.ts",
     "prisma:backfill-workspace-ownership": "tsx prisma/backfill-workspace-ownership.ts",
     "prisma:backfill-account-lifecycle": "tsx prisma/backfill-account-lifecycle.ts",
+    "prisma:promote-super-admin": "tsx prisma/promote-super-admin.ts",
     "local:reset": "./scripts/local-reset.sh"
   },
   "dependencies": {

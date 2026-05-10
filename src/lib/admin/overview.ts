@@ -61,6 +61,22 @@ export type AdminOverview = {
     teamInterestRequests: number;
     teamInviteRequests: number;
   }>;
+  workspaceConversionLeaders: Array<{
+    workspaceId: string;
+    workspaceName: string;
+    ownerEmail: string;
+    planCode: string;
+    billingStatus: string;
+    recommendedTrack: "pro" | "team";
+    ctaClicks: number;
+    proInterest: number;
+    teamInterest: number;
+    teamInvites: number;
+    totalSignals: number;
+    activePipelineStage: string | null;
+    requestedSeatCount: number | null;
+    lastSignalAt: string | null;
+  }>;
   onboarding: Array<{
     state: string;
     count: number;
@@ -190,6 +206,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     conversionEventsByType,
     conversionEventsBySource,
     conversionEventsLast14Days,
+    conversionEventsLast30Days,
     recentConversionEvents,
     unreadNotifications,
     carryoverUnread,
@@ -198,6 +215,8 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     recentNotifications,
     recentInterestRequests,
     recentInviteRequests,
+    workspaceInterestSignals,
+    workspaceInviteSignals,
     searchedUsers,
     searchedWorkspaces
   ] = await Promise.all([
@@ -244,6 +263,30 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
       select: {
         eventType: true,
         createdAt: true
+      }
+    }),
+    prisma.workspaceConversionEvent.findMany({
+      where: { createdAt: { gte: thirtyDaysAgo } },
+      select: {
+        workspaceId: true,
+        eventType: true,
+        createdAt: true,
+        workspace: {
+          select: {
+            name: true,
+            subscription: {
+              select: {
+                planCode: true,
+                billingStatus: true
+              }
+            },
+            owner: {
+              select: {
+                email: true
+              }
+            }
+          }
+        }
       }
     }),
     prisma.workspaceConversionEvent.findMany({
@@ -360,6 +403,55 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
           select: {
             name: true,
             email: true
+          }
+        }
+      }
+    }),
+    prisma.workspaceInterest.findMany({
+      where: { lastRequestedAt: { gte: thirtyDaysAgo } },
+      select: {
+        workspaceId: true,
+        type: true,
+        lastRequestedAt: true,
+        workspace: {
+          select: {
+            name: true,
+            subscription: {
+              select: {
+                planCode: true,
+                billingStatus: true
+              }
+            },
+            owner: {
+              select: {
+                email: true
+              }
+            }
+          }
+        }
+      }
+    }),
+    prisma.workspaceInviteRequest.findMany({
+      where: { lastRequestedAt: { gte: thirtyDaysAgo } },
+      select: {
+        workspaceId: true,
+        pipelineStage: true,
+        requestedSeatCount: true,
+        lastRequestedAt: true,
+        workspace: {
+          select: {
+            name: true,
+            subscription: {
+              select: {
+                planCode: true,
+                billingStatus: true
+              }
+            },
+            owner: {
+              select: {
+                email: true
+              }
+            }
           }
         }
       }
@@ -518,6 +610,136 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
   }
 
   const conversionTrends = Array.from(conversionTrendMap.values());
+  const workspaceConversionLeaderMap = new Map<
+    string,
+    {
+      workspaceId: string;
+      workspaceName: string;
+      ownerEmail: string;
+      planCode: string;
+      billingStatus: string;
+      recommendedTrack: "pro" | "team";
+      ctaClicks: number;
+      proInterest: number;
+      teamInterest: number;
+      teamInvites: number;
+      totalSignals: number;
+      activePipelineStage: string | null;
+      requestedSeatCount: number | null;
+      lastSignalAt: Date | null;
+    }
+  >();
+
+  const getOrCreateWorkspaceLeader = (
+    workspaceId: string,
+    workspaceName: string,
+    ownerEmail: string,
+    planCode: string,
+    billingStatus: string
+  ) => {
+    const existing = workspaceConversionLeaderMap.get(workspaceId);
+    if (existing) return existing;
+    const created = {
+      workspaceId,
+      workspaceName,
+      ownerEmail,
+      planCode,
+      billingStatus,
+      recommendedTrack: "pro" as const,
+      ctaClicks: 0,
+      proInterest: 0,
+      teamInterest: 0,
+      teamInvites: 0,
+      totalSignals: 0,
+      activePipelineStage: null,
+      requestedSeatCount: null,
+      lastSignalAt: null as Date | null
+    };
+    workspaceConversionLeaderMap.set(workspaceId, created);
+    return created;
+  };
+
+  for (const event of conversionEventsLast30Days) {
+    const current = getOrCreateWorkspaceLeader(
+      event.workspaceId,
+      event.workspace.name,
+      event.workspace.owner.email,
+      event.workspace.subscription?.planCode ?? "free",
+      event.workspace.subscription?.billingStatus ?? "free"
+    );
+
+    if (event.eventType === "upgrade_cta_clicked") current.ctaClicks += 1;
+    if (event.eventType === "pro_interest_requested") current.proInterest += 1;
+    if (event.eventType === "team_interest_requested") current.teamInterest += 1;
+    if (event.eventType === "team_invite_requested") current.teamInvites += 1;
+    current.totalSignals += 1;
+    if (!current.lastSignalAt || event.createdAt > current.lastSignalAt) {
+      current.lastSignalAt = event.createdAt;
+    }
+  }
+
+  for (const interest of workspaceInterestSignals) {
+    const current = getOrCreateWorkspaceLeader(
+      interest.workspaceId,
+      interest.workspace.name,
+      interest.workspace.owner.email,
+      interest.workspace.subscription?.planCode ?? "free",
+      interest.workspace.subscription?.billingStatus ?? "free"
+    );
+
+    if (interest.type === "pro") current.proInterest += 1;
+    if (interest.type === "team") current.teamInterest += 1;
+    current.totalSignals += 1;
+    if (!current.lastSignalAt || interest.lastRequestedAt > current.lastSignalAt) {
+      current.lastSignalAt = interest.lastRequestedAt;
+    }
+  }
+
+  for (const invite of workspaceInviteSignals) {
+    const current = getOrCreateWorkspaceLeader(
+      invite.workspaceId,
+      invite.workspace.name,
+      invite.workspace.owner.email,
+      invite.workspace.subscription?.planCode ?? "free",
+      invite.workspace.subscription?.billingStatus ?? "free"
+    );
+
+    current.teamInvites += 1;
+    current.totalSignals += 1;
+    current.activePipelineStage = invite.pipelineStage;
+    current.requestedSeatCount = invite.requestedSeatCount;
+    if (!current.lastSignalAt || invite.lastRequestedAt > current.lastSignalAt) {
+      current.lastSignalAt = invite.lastRequestedAt;
+    }
+  }
+
+  const workspaceConversionLeaders = Array.from(workspaceConversionLeaderMap.values())
+    .map((workspace) => ({
+      ...workspace,
+      recommendedTrack:
+        workspace.teamInvites > 0 || workspace.teamInterest > workspace.proInterest ? ("team" as const) : ("pro" as const)
+    }))
+    .sort((a, b) => {
+      if (b.totalSignals !== a.totalSignals) return b.totalSignals - a.totalSignals;
+      return (b.lastSignalAt?.getTime() ?? 0) - (a.lastSignalAt?.getTime() ?? 0);
+    })
+    .slice(0, 8)
+    .map((workspace) => ({
+      workspaceId: workspace.workspaceId,
+      workspaceName: workspace.workspaceName,
+      ownerEmail: workspace.ownerEmail,
+      planCode: workspace.planCode,
+      billingStatus: workspace.billingStatus,
+      recommendedTrack: workspace.recommendedTrack,
+      ctaClicks: workspace.ctaClicks,
+      proInterest: workspace.proInterest,
+      teamInterest: workspace.teamInterest,
+      teamInvites: workspace.teamInvites,
+      totalSignals: workspace.totalSignals,
+      activePipelineStage: workspace.activePipelineStage,
+      requestedSeatCount: workspace.requestedSeatCount,
+      lastSignalAt: formatDate(workspace.lastSignalAt)
+    }));
 
   return {
     generatedAt: now.toISOString(),
@@ -562,6 +784,7 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
     },
     sourcePerformance,
     conversionTrends,
+    workspaceConversionLeaders,
     onboarding: onboardingStateOrder.map((state) => ({
       state,
       count: onboardingMap.get(state) ?? 0

@@ -36,6 +36,12 @@ function ratioTone(value: number) {
   return "text-muted-foreground";
 }
 
+function trackTone(value: "pro" | "team") {
+  return value === "team"
+    ? "bg-[rgba(31,217,181,0.14)] text-[#0a0087] shadow-none"
+    : "bg-[rgba(0,176,255,0.12)] text-[#1745C7] shadow-none";
+}
+
 export default async function AdminPage({
   searchParams
 }: {
@@ -424,6 +430,82 @@ export default async function AdminPage({
             ) : (
               <p className="text-sm text-muted-foreground">No ratios yet. Once CTA clicks and requests accumulate, this panel will show which surfaces convert best.</p>
             )}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+        <Card className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Workspace Conversion Leaders</p>
+              <p className="text-sm text-muted-foreground">See which specific workspaces are closest to a Pro or Team follow-up.</p>
+            </div>
+            <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+              {overview.workspaceConversionLeaders.length} ranked
+            </Badge>
+          </div>
+          <div className="space-y-3">
+            {overview.workspaceConversionLeaders.length ? (
+              overview.workspaceConversionLeaders.map((workspace) => (
+                <div key={workspace.workspaceId} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium">{workspace.workspaceName}</p>
+                      <p className="text-sm text-muted-foreground">{workspace.ownerEmail}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspace.planCode.toUpperCase()}</Badge>
+                      <Badge className={trackTone(workspace.recommendedTrack)}>
+                        {workspace.recommendedTrack.toUpperCase()} next
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Badge>Signals: {workspace.totalSignals}</Badge>
+                    <Badge>Clicks: {workspace.ctaClicks}</Badge>
+                    <Badge>Pro: {workspace.proInterest}</Badge>
+                    <Badge>Team: {workspace.teamInterest}</Badge>
+                    <Badge>Invites: {workspace.teamInvites}</Badge>
+                    {workspace.requestedSeatCount ? <Badge>Seats: {workspace.requestedSeatCount}</Badge> : null}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {workspace.activePipelineStage ? `Pipeline: ${prettify(workspace.activePipelineStage)} · ` : ""}
+                    Last signal {formatDateTime(workspace.lastSignalAt)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No workspace-level conversion leaders yet.</p>
+            )}
+          </div>
+        </Card>
+
+        <Card className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold">How to Use This Ranking</p>
+            <p className="text-sm text-muted-foreground">A simple operator guide so follow-up stays consistent.</p>
+          </div>
+          <div className="space-y-3">
+            {[
+              {
+                title: "Pro-first workspaces",
+                body: "Prioritize workspaces with repeated CTA clicks plus Pro interest when habit pressure and analytics demand are the main signals."
+              },
+              {
+                title: "Team-first workspaces",
+                body: "Escalate workspaces that already show Team interest or invite requests. These are better candidates for collaboration rollout than generic pricing outreach."
+              },
+              {
+                title: "Pipeline-assisted follow-up",
+                body: "If a workspace already has a pipeline stage, use that stage before opening a fresh conversation. This keeps Team rollout communication clean."
+              }
+            ].map((item) => (
+              <div key={item.title} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
+                <p className="font-medium">{item.title}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{item.body}</p>
+              </div>
+            ))}
           </div>
         </Card>
       </section>
