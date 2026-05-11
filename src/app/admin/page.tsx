@@ -1,4 +1,5 @@
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceInterestReviewCard } from "@/components/admin/workspace-interest-review-card";
@@ -52,7 +53,36 @@ export default async function AdminPage({
 
   const access = getAdminAccess(user);
   if (!access.isAdmin) {
-    notFound();
+    return (
+      <main className="mx-auto max-w-[900px] space-y-5 px-4 py-10">
+        <Card className="space-y-4">
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Admin Access</p>
+              <h1 className="text-3xl font-semibold tracking-tight">Access denied</h1>
+            </div>
+            <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
+              This account is signed in, but it does not currently have admin access. If this account should be a system
+              admin, promote it to <code>super_admin</code> or add its email to <code>ADMIN_EMAILS</code> as a fallback.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/daily"
+              className="inline-flex items-center justify-center rounded-full bg-[#1745C7] px-5 py-3 text-sm font-semibold text-white shadow-[0_18px_38px_rgba(23,69,199,0.22)] transition hover:bg-[#0a0087]"
+            >
+              Back to Daily
+            </Link>
+            <Link
+              href="/settings"
+              className="inline-flex items-center justify-center rounded-full border border-[hsl(var(--border))] bg-white px-5 py-3 text-sm font-semibold text-[hsl(var(--foreground))] transition hover:border-[#00b0ff] hover:text-[#1745C7]"
+            >
+              Open Settings
+            </Link>
+          </div>
+        </Card>
+      </main>
+    );
   }
 
   const resolvedSearchParams = (await searchParams) ?? {};
