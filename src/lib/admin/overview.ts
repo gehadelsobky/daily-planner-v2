@@ -165,13 +165,25 @@ export type AdminOverview = {
       email: string;
       accountStatus: string;
       onboardingState: string;
+      systemRole: string;
+      lastActiveAt: string | null;
+      workspaceCount: number;
     }>;
     workspaces: Array<{
       id: string;
       name: string;
+      type: string;
+      status: string;
       planCode: string;
       billingStatus: string;
+      ownerName: string;
       ownerEmail: string;
+      membersCount: number;
+      interestCount: number;
+      conversionEventCount: number;
+      inviteRequestStatus: string | null;
+      invitePipelineStage: string | null;
+      lastInviteRequestedAt: string | null;
     }>;
   };
 };
@@ -502,14 +514,21 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
           },
           take: 10,
           orderBy: { createdAt: "desc" },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            accountStatus: true,
-            onboardingState: true
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          accountStatus: true,
+          onboardingState: true,
+          systemRole: true,
+          lastActiveAt: true,
+          _count: {
+            select: {
+              workspaceMembers: true
+            }
           }
-        })
+        }
+      })
       : Promise.resolve([]),
     trimmedQuery
       ? prisma.workspace.findMany({
@@ -524,6 +543,8 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
           select: {
             id: true,
             name: true,
+            type: true,
+            status: true,
             subscription: {
               select: {
                 planCode: true,
@@ -532,7 +553,22 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
             },
             owner: {
               select: {
+                name: true,
                 email: true
+              }
+            },
+            inviteRequests: {
+              select: {
+                status: true,
+                pipelineStage: true,
+                lastRequestedAt: true
+              }
+            },
+            _count: {
+              select: {
+                members: true,
+                interestRequests: true,
+                conversionEvents: true
               }
             }
           }
@@ -910,14 +946,26 @@ export async function getAdminOverview(prisma: DbClient, query?: string): Promis
         name: user.name,
         email: user.email,
         accountStatus: user.accountStatus,
-        onboardingState: user.onboardingState
+        onboardingState: user.onboardingState,
+        systemRole: user.systemRole,
+        lastActiveAt: formatDate(user.lastActiveAt),
+        workspaceCount: user._count.workspaceMembers
       })),
       workspaces: searchedWorkspaces.map((workspace) => ({
         id: workspace.id,
         name: workspace.name,
+        type: workspace.type,
+        status: workspace.status,
         planCode: workspace.subscription?.planCode ?? "free",
         billingStatus: workspace.subscription?.billingStatus ?? "free",
-        ownerEmail: workspace.owner.email
+        ownerName: workspace.owner.name,
+        ownerEmail: workspace.owner.email,
+        membersCount: workspace._count.members,
+        interestCount: workspace._count.interestRequests,
+        conversionEventCount: workspace._count.conversionEvents,
+        inviteRequestStatus: workspace.inviteRequests[0]?.status ?? null,
+        invitePipelineStage: workspace.inviteRequests[0]?.pipelineStage ?? null,
+        lastInviteRequestedAt: formatDate(workspace.inviteRequests[0]?.lastRequestedAt ?? null)
       }))
     }
   };

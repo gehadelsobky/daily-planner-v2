@@ -88,7 +88,34 @@ export default async function AdminPage({
   const resolvedSearchParams = (await searchParams) ?? {};
   const rawQuery = resolvedSearchParams.q;
   const query = Array.isArray(rawQuery) ? rawQuery[0] : rawQuery;
+  const rawFocus = resolvedSearchParams.focus;
+  const focus = Array.isArray(rawFocus) ? rawFocus[0] : rawFocus;
+  const rawInterestStatus = resolvedSearchParams.interest_status;
+  const interestStatus = Array.isArray(rawInterestStatus) ? rawInterestStatus[0] : rawInterestStatus;
+  const rawInviteStatus = resolvedSearchParams.invite_status;
+  const inviteStatus = Array.isArray(rawInviteStatus) ? rawInviteStatus[0] : rawInviteStatus;
   const overview = await getAdminOverview(prisma, query);
+  const selectedFocus = focus && ["all", "support", "interest", "invite", "conversion"].includes(focus) ? focus : "all";
+  const selectedInterestStatus =
+    interestStatus && ["all", "pending", "reviewed", "contacted", "closed"].includes(interestStatus)
+      ? interestStatus
+      : "all";
+  const selectedInviteStatus =
+    inviteStatus && ["all", "pending", "reviewed", "approved", "closed"].includes(inviteStatus)
+      ? inviteStatus
+      : "all";
+  const filteredInterestRequests =
+    selectedInterestStatus === "all"
+      ? overview.recentInterestRequests
+      : overview.recentInterestRequests.filter((request) => request.status === selectedInterestStatus);
+  const filteredInviteRequests =
+    selectedInviteStatus === "all"
+      ? overview.recentInviteRequests
+      : overview.recentInviteRequests.filter((request) => request.status === selectedInviteStatus);
+  const showInterestSection = selectedFocus === "all" || selectedFocus === "interest";
+  const showInviteSection = selectedFocus === "all" || selectedFocus === "invite";
+  const showConversionSection = selectedFocus === "all" || selectedFocus === "conversion";
+  const showSupportSection = selectedFocus === "all" || selectedFocus === "support";
 
   return (
     <main className="mx-auto max-w-[1280px] space-y-5 px-4 py-6">
@@ -116,7 +143,7 @@ export default async function AdminPage({
           </div>
         ) : null}
 
-        <form method="GET" className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_150px]">
+        <form method="GET" className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_180px_180px_150px]">
           <input
             type="search"
             name="q"
@@ -124,6 +151,39 @@ export default async function AdminPage({
             placeholder="Search user email, name, or workspace"
             className="h-12 rounded-[1rem] border border-border bg-white px-4 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#00b0ff]"
           />
+          <select
+            name="focus"
+            defaultValue={selectedFocus}
+            className="h-12 rounded-[1rem] border border-border bg-white px-4 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#00b0ff]"
+          >
+            <option value="all">All sections</option>
+            <option value="support">Support lookup</option>
+            <option value="interest">Plan interest</option>
+            <option value="invite">Invite pipeline</option>
+            <option value="conversion">Conversion signals</option>
+          </select>
+          <select
+            name="interest_status"
+            defaultValue={selectedInterestStatus}
+            className="h-12 rounded-[1rem] border border-border bg-white px-4 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#00b0ff]"
+          >
+            <option value="all">Any interest status</option>
+            <option value="pending">Pending interest</option>
+            <option value="reviewed">Reviewed interest</option>
+            <option value="contacted">Contacted interest</option>
+            <option value="closed">Closed interest</option>
+          </select>
+          <select
+            name="invite_status"
+            defaultValue={selectedInviteStatus}
+            className="h-12 rounded-[1rem] border border-border bg-white px-4 text-sm shadow-[0_6px_18px_rgba(15,23,42,0.04)] outline-none transition focus:border-[#00b0ff]"
+          >
+            <option value="all">Any invite status</option>
+            <option value="pending">Pending invite</option>
+            <option value="reviewed">Reviewed invite</option>
+            <option value="approved">Approved invite</option>
+            <option value="closed">Closed invite</option>
+          </select>
           <button className="h-12 rounded-[1rem] bg-[linear-gradient(135deg,#1745C7,#0a0087)] px-4 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(23,69,199,0.18)]">
             Search
           </button>
@@ -324,6 +384,7 @@ export default async function AdminPage({
         </section>
       ) : null}
 
+      {showConversionSection ? (
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
@@ -388,7 +449,9 @@ export default async function AdminPage({
           </div>
         </Card>
       </section>
+      ) : null}
 
+      {showConversionSection ? (
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">
           <div>
@@ -447,6 +510,7 @@ export default async function AdminPage({
           </div>
         </Card>
       </section>
+      ) : null}
 
       <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <Card className="space-y-4">
@@ -527,7 +591,7 @@ export default async function AdminPage({
           </div>
         </Card>
       </section>
-
+      {showConversionSection ? (
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
@@ -603,7 +667,9 @@ export default async function AdminPage({
           </div>
         </Card>
       </section>
+      ) : null}
 
+      {showInterestSection ? (
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
@@ -635,8 +701,8 @@ export default async function AdminPage({
             <p className="text-sm text-muted-foreground">Review signals, leave internal notes, and move each request through follow-up states.</p>
           </div>
           <div className="space-y-3">
-            {overview.recentInterestRequests.length ? (
-              overview.recentInterestRequests.map((request) => (
+            {filteredInterestRequests.length ? (
+              filteredInterestRequests.map((request) => (
                 <WorkspaceInterestReviewCard key={request.id} request={request} />
               ))
             ) : (
@@ -645,7 +711,9 @@ export default async function AdminPage({
           </div>
         </Card>
       </section>
+      ) : null}
 
+      {showConversionSection ? (
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
@@ -722,7 +790,9 @@ export default async function AdminPage({
           </div>
         </Card>
       </section>
+      ) : null}
 
+      {showInviteSection ? (
       <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
@@ -763,8 +833,8 @@ export default async function AdminPage({
             <p className="text-sm text-muted-foreground">Review seat counts, target emails, and internal notes before Team invites go live.</p>
           </div>
           <div className="space-y-3">
-            {overview.recentInviteRequests.length ? (
-              overview.recentInviteRequests.map((request) => (
+            {filteredInviteRequests.length ? (
+              filteredInviteRequests.map((request) => (
                 <TeamInviteRequestReviewCard key={request.id} request={request} />
               ))
             ) : (
@@ -773,22 +843,41 @@ export default async function AdminPage({
           </div>
         </Card>
       </section>
+      ) : null}
 
-      {overview.search.query ? (
+      {overview.search.query && showSupportSection ? (
         <section className="grid gap-4 lg:grid-cols-2">
           <Card className="space-y-4">
             <div>
               <p className="text-sm font-semibold">User Lookup</p>
               <p className="text-sm text-muted-foreground">Matches for “{overview.search.query}”.</p>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                {overview.search.users.length} user matches
+              </Badge>
+              <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                {overview.search.workspaces.length} workspace matches
+              </Badge>
+            </div>
             <div className="space-y-3">
               {overview.search.users.length ? (
                 overview.search.users.map((searchUser) => (
                   <div key={searchUser.id} className="rounded-[1rem] border border-border bg-white/88 px-4 py-3">
-                    <p className="font-medium">{searchUser.name}</p>
-                    <p className="text-sm text-muted-foreground">{searchUser.email}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium">{searchUser.name}</p>
+                        <p className="text-sm text-muted-foreground">{searchUser.email}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">
+                          {prettify(searchUser.systemRole)}
+                        </Badge>
+                        <Badge>{prettify(searchUser.accountStatus)}</Badge>
+                      </div>
+                    </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {prettify(searchUser.accountStatus)} · {prettify(searchUser.onboardingState)}
+                      {prettify(searchUser.onboardingState)} · {searchUser.workspaceCount} workspace memberships · Last active {formatDateTime(searchUser.lastActiveAt)}
                     </p>
                   </div>
                 ))
@@ -812,9 +901,20 @@ export default async function AdminPage({
                       <div className="flex flex-wrap gap-2">
                         <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{workspace.planCode.toUpperCase()}</Badge>
                         <Badge>{prettify(workspace.billingStatus)}</Badge>
+                        <Badge className="bg-white text-[hsl(var(--foreground))] shadow-none">{prettify(workspace.type)}</Badge>
                       </div>
                     </div>
-                    <p className="mt-2 text-sm text-muted-foreground">{workspace.ownerEmail}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {workspace.ownerName} · {workspace.ownerEmail}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {prettify(workspace.status)} · {workspace.membersCount} members · {workspace.interestCount} interest signals · {workspace.conversionEventCount} conversion events
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {workspace.inviteRequestStatus
+                        ? `Invite ${prettify(workspace.inviteRequestStatus)}${workspace.invitePipelineStage ? ` · Pipeline ${prettify(workspace.invitePipelineStage)}` : ""} · Last invite ${formatDateTime(workspace.lastInviteRequestedAt)}`
+                        : "No invite request yet"}
+                    </p>
                   </div>
                 ))
               ) : (
